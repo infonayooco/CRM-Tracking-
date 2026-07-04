@@ -11,7 +11,7 @@
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
-import { useStore } from "@/lib/store";
+import { setLocalPersistDisabled, useStore } from "@/lib/store";
 import type { Customer, Item } from "@/lib/types";
 import { diffById, diffNumberRecord, diffStringSet } from "./diff";
 import { rowToCustomer, rowToItem } from "./mappers";
@@ -63,6 +63,12 @@ function currentSnapshot(): CrmSnapshot {
 }
 
 export async function hydrateFromSupabase(db: SupabaseDB = createClient()): Promise<void> {
+  // The DB is the source of truth now: stop mirroring CRM data into localStorage
+  // and wipe any prior snapshot, so authenticated data can't linger after logout
+  // or be replayed into a later unauthenticated (standalone) render.
+  setLocalPersistDisabled(true);
+  useStore.persist.clearStorage();
+
   const data = await fetchSnapshot(db);
   applyingRemote = true;
   try {
@@ -113,7 +119,6 @@ async function pushLocalChanges(db: SupabaseDB): Promise<void> {
   const items = diffById(lastSynced.items, state.items);
   const members = diffStringSet(lastSynced.members, state.members);
   const quotas = diffNumberRecord(lastSynced.ownerQuotas, state.ownerQuotas);
-  lastSynced = state;
 
   inFlight = (async () => {
     await Promise.all([
@@ -125,6 +130,9 @@ async function pushLocalChanges(db: SupabaseDB): Promise<void> {
       setOwnerQuotas(db, quotas.set),
       deleteOwnerQuotas(db, quotas.removed),
     ]);
+    // Advance the baseline ONLY after the whole batch succeeds, so a failed push
+    // is retried (re-diffed) on the next store change instead of being dropped.
+    lastSynced = state;
   })();
 
   try {

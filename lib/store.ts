@@ -141,9 +141,18 @@ function emitStorageError() {
 // from a genuine change made by another tab.
 let lastWrittenRaw: string | null = null;
 
+// In Supabase mode the DB is the source of truth, so we must NOT mirror CRM data
+// into localStorage (it would leak PII, survive sign-out, and could be replayed
+// into a later unauthenticated render). This flag disables the read/write path;
+// removeItem stays active so the cache can be cleared. removeItem is never gated.
+let localPersistDisabled = false;
+export function setLocalPersistDisabled(disabled: boolean) {
+  localPersistDisabled = disabled;
+}
+
 const rawStoreStorage: PersistStorage<PersistedStore> = {
   getItem(name): StorageValue<PersistedStore> | null {
-    if (typeof window === "undefined") return null;
+    if (typeof window === "undefined" || localPersistDisabled) return null;
     const raw = window.localStorage.getItem(name);
     if (!raw) return null;
     try {
@@ -171,7 +180,7 @@ const rawStoreStorage: PersistStorage<PersistedStore> = {
     }
   },
   setItem(name, value) {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || localPersistDisabled) return;
     try {
       const serialized = JSON.stringify({ ...value.state, version: STORE_VERSION });
       window.localStorage.setItem(name, serialized);
