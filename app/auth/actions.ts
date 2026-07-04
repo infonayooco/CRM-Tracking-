@@ -14,7 +14,17 @@ export async function signIn(_prev: AuthResult, formData: FormData): Promise<Aut
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" };
+  if (error) {
+    // Surface the "email not confirmed" case specifically — otherwise it looks
+    // like a wrong password and is impossible to diagnose. (Other errors stay
+    // generic to avoid account enumeration.)
+    const notConfirmed = error.code === "email_not_confirmed" || /not confirmed/i.test(error.message);
+    return {
+      error: notConfirmed
+        ? "บัญชีนี้ยังไม่ได้ยืนยันอีเมล — ติดต่อผู้ดูแลระบบเพื่อเปิดใช้งานบัญชี"
+        : "อีเมลหรือรหัสผ่านไม่ถูกต้อง",
+    };
+  }
 
   revalidatePath("/", "layout");
   redirect("/");
