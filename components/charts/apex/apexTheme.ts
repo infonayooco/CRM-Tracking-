@@ -265,7 +265,7 @@ export function sparklineOptions({
   currency?: boolean;
 } = {}): ApexOptions {
   const fmt = currency ? thaiBaht : thaiNumber;
-  return {
+  const options: ApexOptions = {
     chart: { type, fontFamily: APEX_FONT, sparkline: { enabled: true }, animations: { enabled: true } },
     colors: [color],
     stroke: { curve: "smooth", width: 2 },
@@ -273,7 +273,6 @@ export function sparklineOptions({
       type === "area"
         ? { type: "gradient", gradient: { opacityFrom: 0.4, opacityTo: 0.05 } }
         : { opacity: 1 },
-    plotOptions: type === "bar" ? { bar: { borderRadius: 3, columnWidth: "55%" } } : undefined,
     tooltip: {
       theme: "dark",
       style: { fontFamily: APEX_FONT, fontSize: "12px" },
@@ -281,4 +280,12 @@ export function sparklineOptions({
       marker: { show: false },
     },
   };
+  // IMPORTANT: only add plotOptions for bar. Setting `plotOptions: undefined`
+  // would clobber ApexCharts' own default plotOptions (which includes
+  // plotOptions.line) during its merge, then Globals reads
+  // config.plotOptions.line.isSlopeChart and throws "reading 'line'".
+  if (type === "bar") {
+    options.plotOptions = { bar: { borderRadius: 3, columnWidth: "55%" } };
+  }
+  return options;
 }

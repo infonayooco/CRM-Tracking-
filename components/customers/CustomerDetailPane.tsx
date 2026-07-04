@@ -181,10 +181,14 @@ export function CustomerDetailPane({
               variant="ghost"
               onClick={onDelete}
               aria-label={`ลบลูกค้า ${customer.name}`}
-              className="border-error/30 text-error-dark hover:border-error/50 hover:bg-error-light"
             >
-              <Trash2 className="size-4" aria-hidden="true" />
-              ลบ
+              {/* Button's ghost variant already sets text/border color via
+                  ghostBtnClass, and this repo's Button has no class-merge
+                  utility — so the destructive tint is applied directly to
+                  these children (which always wins over an ancestor's
+                  inherited color) instead of gambling on className order. */}
+              <Trash2 className="size-4 text-error-dark" aria-hidden="true" />
+              <span className="text-error-dark">ลบ</span>
             </Button>
           </div>
         </div>

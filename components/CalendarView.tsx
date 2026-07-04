@@ -1,9 +1,15 @@
 "use client";
 
-import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
-import { useMemo, useState } from "react";
-import { Chip, cardClass, emptyCardClass, pageTitleClass } from "@/components/ui";
-import { CHANNEL_MAP, EXEC_MAP, THAI_MONTHS_FULL } from "@/lib/constants";
+import { format, getDay, parse, startOfWeek } from "date-fns";
+import { th } from "date-fns/locale";
+import { AlertTriangle, ChevronLeft, ChevronRight, UserRound } from "lucide-react";
+import { useMemo } from "react";
+import { Calendar, dateFnsLocalizer, Navigate, Views } from "react-big-calendar";
+import type { EventPropGetter, Formats, ToolbarProps, View } from "react-big-calendar";
+import "react-big-calendar/lib/css/react-big-calendar.css";
+import "./calendarRbc.css";
+import { Button, Chip, cardClass, pageTitleClass } from "@/components/ui";
+import { CHANNEL_MAP, EXEC_MAP } from "@/lib/constants";
 import { filteredItems, isOverdue, itemName } from "@/lib/derived";
 import { useStore } from "@/lib/store";
 import type { CalDateField, Customer, Item } from "@/lib/types";
@@ -16,7 +22,174 @@ const DATE_FIELD_LABELS: Record<CalDateField, string> = {
 
 const DATE_FIELD_ENTRIES = Object.entries(DATE_FIELD_LABELS) as [CalDateField, string][];
 
-const WEEKDAYS = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."] as const;
+const VIEW_LABELS: Record<View, string> = {
+  month: "เดือน",
+  week: "สัปดาห์",
+  work_week: "สัปดาห์ทำงาน",
+  day: "วัน",
+  agenda: "ทั้งหมด",
+};
+
+const CALENDAR_VIEWS: View[] = [Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA];
+
+// react-big-calendar's date-fns localizer wiring — Thai month/weekday names via date-fns/locale/th.
+const localizer = dateFnsLocalizer({
+  format,
+  parse,
+  startOfWeek,
+  getDay,
+  locales: { th },
+});
+
+// Header/label formats use Intl("th-TH") instead of the localizer's default so the
+// calendar reads the same Buddhist-era year the rest of the app shows (date-fns'
+// `th` locale localizes month/day names but keeps the Gregorian year).
+const monthYearFormatter = new Intl.DateTimeFormat("th-TH", { month: "long", year: "numeric" });
+const dayHeaderFormatter = new Intl.DateTimeFormat("th-TH", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+const weekdayShortFormatter = new Intl.DateTimeFormat("th-TH", { weekday: "short" });
+const monthDateFormatter = new Intl.DateTimeFormat("th-TH", { day: "numeric" });
+const agendaDateFormatter = new Intl.DateTimeFormat("th-TH", {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+const rangeDayFormatter = new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short" });
+
+const calendarFormats: Formats = {
+  dateFormat: (date) => monthDateFormatter.format(date),
+  weekdayFormat: (date) => weekdayShortFormatter.format(date),
+  monthHeaderFormat: (date) => monthYearFormatter.format(date),
+  dayHeaderFormat: (date) => dayHeaderFormatter.format(date),
+  dayRangeHeaderFormat: ({ start, end }) => `${rangeDayFormatter.format(start)} – ${rangeDayFormatter.format(end)}`,
+  agendaHeaderFormat: ({ start, end }) => `${rangeDayFormatter.format(start)} – ${rangeDayFormatter.format(end)}`,
+  agendaDateFormat: (date) => agendaDateFormatter.format(date),
+};
+
+const CALENDAR_MESSAGES = {
+  date: "วันที่",
+  time: "เวลา",
+  event: "ชิ้นงาน",
+  allDay: "ทั้งวัน",
+  week: "สัปดาห์",
+  work_week: "สัปดาห์ทำงาน",
+  day: "วัน",
+  month: "เดือน",
+  previous: "ก่อนหน้า",
+  next: "ถัดไป",
+  yesterday: "เมื่อวาน",
+  tomorrow: "พรุ่งนี้",
+  today: "วันนี้",
+  agenda: "ทั้งหมด",
+  noEventsInRange: "ไม่มีชิ้นงานตามตัวกรองในช่วงนี้",
+  showMore: (count: number) => `+${count.toLocaleString("th-TH")} เพิ่มเติม`,
+};
+
+// Mirrors app/globals.css' error tokens. Kept local (not imported) because event
+// colors must be applied inline — see the cascade-layer note in calendarRbc.css.
+const OVERDUE_TINT = { bg: "#fdede8", text: "#c0392b", accent: "#fa896b" };
+
+type CalendarEvent = {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  allDay: true;
+  item: Item;
+  customer: Customer | undefined;
+};
+
+// Dates are stored as plain "YYYY-MM-DD" strings; parse them as local-midnight so the
+// event lands on the same calendar day regardless of the browser's timezone.
+function parseCalendarDate(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const [, y, m, d] = match;
+  return new Date(Number(y), Number(m) - 1, Number(d));
+}
+
+const eventPropGetter: EventPropGetter<CalendarEvent> = (event) => {
+  const overdue = isOverdue(event.item);
+  const status = EXEC_MAP[event.item.execStatus] || EXEC_MAP.not_started;
+  const channel = CHANNEL_MAP[event.item.channel] || CHANNEL_MAP.other;
+  const tint = overdue
+    ? { bg: OVERDUE_TINT.bg, text: OVERDUE_TINT.text, accent: OVERDUE_TINT.accent }
+    : { bg: `${status.dot}1f`, text: status.dot, accent: channel.color };
+
+  return {
+    className: "rbc-modernize-event",
+    style: {
+      backgroundColor: tint.bg,
+      color: tint.text,
+      borderLeftColor: tint.accent,
+    },
+  };
+};
+
+function CalendarEventContent({ event }: { event: CalendarEvent }) {
+  const overdue = isOverdue(event.item);
+  const status = EXEC_MAP[event.item.execStatus] || EXEC_MAP.not_started;
+
+  return (
+    <span className="flex min-w-0 items-center gap-1.5">
+      {overdue ? (
+        <AlertTriangle className="size-3 shrink-0" aria-hidden="true" />
+      ) : (
+        <span
+          className="size-1.5 shrink-0 rounded-full"
+          style={{ backgroundColor: status.dot }}
+          aria-hidden="true"
+        />
+      )}
+      <span className="min-w-0 truncate">{event.title}</span>
+    </span>
+  );
+}
+
+function ModernizeToolbar({ label, view, views, onNavigate, onView }: ToolbarProps<CalendarEvent>) {
+  const viewList = Array.isArray(views) ? views : (Object.keys(views) as View[]);
+
+  return (
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-border-soft pb-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="primary" onClick={() => onNavigate(Navigate.TODAY)}>
+          วันนี้
+        </Button>
+        <Button variant="ghost" aria-label="ช่วงก่อนหน้า" onClick={() => onNavigate(Navigate.PREVIOUS)}>
+          <ChevronLeft className="size-4" aria-hidden="true" />
+        </Button>
+        <Button variant="ghost" aria-label="ช่วงถัดไป" onClick={() => onNavigate(Navigate.NEXT)}>
+          <ChevronRight className="size-4" aria-hidden="true" />
+        </Button>
+        <h2 className="text-base font-semibold text-ink sm:text-lg">{label}</h2>
+      </div>
+      <div
+        role="group"
+        aria-label="มุมมองปฏิทิน"
+        className="inline-flex items-center rounded-lg border border-slate-300 bg-white p-1"
+      >
+        {viewList.map((viewKey) => (
+          <button
+            key={viewKey}
+            type="button"
+            onClick={() => onView(viewKey)}
+            aria-pressed={view === viewKey}
+            className={`inline-flex h-8 items-center rounded-md px-2.5 text-xs font-semibold transition-colors ${
+              view === viewKey ? "bg-brand-600 text-white" : "text-muted hover:bg-slate-100"
+            }`}
+          >
+            {VIEW_LABELS[viewKey] ?? viewKey}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function CalendarView() {
   const customers = useStore((state) => state.customers);
@@ -26,23 +199,19 @@ export function CalendarView() {
   const calDateField = useStore((state) => state.calDateField);
   const statusDim = useStore((state) => state.statusDim);
   const setCalDateField = useStore((state) => state.setCalDateField);
+  const setFilter = useStore((state) => state.setFilter);
   const openItemModal = useStore((state) => state.openItemModal);
 
-  const [cursor, setCursor] = useState(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
-  });
-  const [calMode, setCalMode] = useState<"month" | "agenda">("month");
-
-  const year = cursor.getFullYear();
-  const month = cursor.getMonth();
-  const today = new Date();
-  const monthLabel = `${THAI_MONTHS_FULL[month]} ${year + 543}`;
+  const mine = filters.mine;
 
   const customerById = useMemo(
     () => new Map(customers.map((customer) => [customer.id, customer])),
     [customers],
   );
+
+  // "งานของฉัน" reuses the store's shared filters.mine — the same durable, persisted
+  // scope used by the Sidebar toggle and HomeView, so toggling it here stays in sync
+  // with the rest of the app instead of drifting into a second local "mine" concept.
   const visibleItems = useMemo(
     () =>
       filteredItems({
@@ -55,63 +224,48 @@ export function CalendarView() {
       }),
     [customers, items, settings, filters, calDateField, statusDim],
   );
-  const cells = useMemo(() => buildMonthCells(year, month), [year, month]);
-  const itemsByDate = useMemo(() => groupItemsByDate(visibleItems, calDateField), [visibleItems, calDateField]);
+
+  const events = useMemo<CalendarEvent[]>(
+    () =>
+      visibleItems.flatMap((item) => {
+        const date = parseCalendarDate(item[calDateField] || "");
+        if (!date) return [];
+        const customer = customerById.get(item.customerId);
+        return [
+          {
+            id: item.id,
+            title: `${itemName(item)} · ${customer?.name || "ไม่ระบุลูกค้า"}`,
+            start: date,
+            end: date,
+            allDay: true as const,
+            item,
+            customer,
+          },
+        ];
+      }),
+    [visibleItems, calDateField, customerById],
+  );
+
   const noDateItems = useMemo(
     () => visibleItems.filter((item) => !item[calDateField]),
     [visibleItems, calDateField],
   );
-  const monthPrefix = `${year}-${String(month + 1).padStart(2, "0")}`;
-  const monthItemCount = visibleItems.filter((item) => item[calDateField]?.startsWith(monthPrefix)).length;
 
-  const changeMonth = (offset: number) => {
-    setCursor((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
-  };
-  const goToday = () => {
-    const now = new Date();
-    setCursor(new Date(now.getFullYear(), now.getMonth(), 1));
-  };
+  const handleSelectEvent = (event: CalendarEvent) => openItemModal(event.item.id);
 
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-brand-600">Calendar</p>
-          <h1 className={`mt-1 ${pageTitleClass}`}>
-            {calMode === "month" ? monthLabel : "ทั้งหมด"}
-          </h1>
+          <h1 className={pageTitleClass}>ปฏิทินงาน</h1>
           <p className="mt-1 text-sm text-muted">
-            {calMode === "month" ? (
-              <>
-                แสดง {monthItemCount.toLocaleString("th-TH")} จาก{" "}
-                {visibleItems.length.toLocaleString("th-TH")} ชิ้นงาน
-              </>
-            ) : (
-              <>ทั้งหมด {visibleItems.length.toLocaleString("th-TH")} ชิ้นงาน (เรียงตามวันที่)</>
-            )}
+            แสดง {visibleItems.length.toLocaleString("th-TH")} ชิ้นงาน
+            {mine ? ` · เฉพาะงานของฉัน${settings.currentUser ? ` (${settings.currentUser})` : ""}` : ""}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div
-            role="group"
-            aria-label="มุมมองปฏิทิน"
-            className="inline-flex items-center rounded-lg border border-slate-300 bg-white p-1"
-          >
-            {(["month", "agenda"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setCalMode(mode)}
-                aria-pressed={calMode === mode}
-                className={`inline-flex h-8 items-center rounded-md px-2.5 text-xs font-semibold transition-colors ${
-                  calMode === mode ? "bg-brand-600 text-white" : "text-muted hover:bg-slate-100"
-                }`}
-              >
-                {mode === "month" ? "เดือน" : "ทั้งหมด"}
-              </button>
-            ))}
-          </div>
           <div
             role="group"
             aria-label="วันที่ที่ใช้ใน Calendar"
@@ -131,33 +285,19 @@ export function CalendarView() {
               </button>
             ))}
           </div>
-          {calMode === "month" ? (
-            <>
-              <button
-                type="button"
-                onClick={() => changeMonth(-1)}
-                className="grid size-10 place-items-center rounded-lg border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-100"
-                aria-label="เดือนก่อน"
-              >
-                <ChevronLeft className="size-4" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                onClick={goToday}
-                className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-100"
-              >
-                วันนี้
-              </button>
-              <button
-                type="button"
-                onClick={() => changeMonth(1)}
-                className="grid size-10 place-items-center rounded-lg border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-100"
-                aria-label="เดือนถัดไป"
-              >
-                <ChevronRight className="size-4" aria-hidden="true" />
-              </button>
-            </>
-          ) : null}
+          <button
+            type="button"
+            onClick={() => setFilter("mine", !mine)}
+            aria-pressed={mine}
+            className={`inline-flex h-10 items-center gap-1.5 rounded-lg border px-3 text-sm font-semibold transition-colors ${
+              mine
+                ? "border-brand-600 bg-primary-light text-primary-dark"
+                : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            <UserRound className="size-4" aria-hidden="true" />
+            งานของฉัน
+          </button>
         </div>
       </div>
 
@@ -170,104 +310,51 @@ export function CalendarView() {
         ))}
       </div>
 
-      {calMode === "agenda" ? (
-        <AgendaList
-          items={visibleItems}
-          calDateField={calDateField}
-          customerById={customerById}
-          onOpen={openItemModal}
-        />
-      ) : null}
-
-      <div
-        className={`overflow-hidden ${cardClass}${calMode === "agenda" ? " hidden" : ""}`}
-      >
-        <div className="grid grid-cols-7 border-b border-border bg-slate-100 text-center text-xs font-semibold uppercase tracking-wide text-muted">
-          {WEEKDAYS.map((weekday, weekdayIndex) => (
-            <div
-              key={weekday}
-              className={`py-2.5 ${weekdayIndex === 0 || weekdayIndex === 6 ? "text-slate-400" : ""}`}
-            >
-              {weekday}
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7">
-          {cells.map((day, index) => {
-            const dateKey = day ? dateString(year, month, day) : "";
-            const dayItems = day ? itemsByDate.get(dateKey) || [] : [];
-            const isCurrentDay =
-              day &&
-              year === today.getFullYear() &&
-              month === today.getMonth() &&
-              day === today.getDate();
-
-            return (
-              <div
-                key={day ? `day-${day}` : `empty-${index}`}
-                className={`min-h-28 border-b border-r border-border p-2 sm:min-h-32 ${
-                  day
-                    ? isCurrentDay
-                      ? "bg-brand-50/50 ring-2 ring-inset ring-brand-600"
-                      : "bg-surface"
-                    : "bg-slate-100/60"
-                }`}
-              >
-                {day ? (
-                  <>
-                    <div className="mb-1.5 flex items-center justify-between">
-                      <span
-                        className={
-                          isCurrentDay
-                            ? "grid size-6 place-items-center rounded-full bg-brand-600 text-xs font-semibold text-white"
-                            : "text-xs font-semibold text-muted"
-                        }
-                      >
-                        {day.toLocaleString("th-TH")}
-                      </span>
-                    </div>
-                    <div className="space-y-1">
-                      {dayItems.slice(0, 4).map((item) => (
-                        <CalendarItem
-                          key={item.id}
-                          item={item}
-                          customer={customerById.get(item.customerId)}
-                          onOpen={openItemModal}
-                        />
-                      ))}
-                      {dayItems.length > 4 ? (
-                        <p className="px-1 text-[11px] font-medium text-muted">
-                          +{(dayItems.length - 4).toLocaleString("th-TH")} เพิ่มเติม
-                        </p>
-                      ) : null}
-                    </div>
-                  </>
-                ) : null}
-              </div>
-            );
-          })}
+      <div className={`overflow-hidden ${cardClass} p-3 sm:p-4`}>
+        <div className="rbc-modernize h-[70vh] min-h-[560px]">
+          <Calendar<CalendarEvent>
+            localizer={localizer}
+            culture="th"
+            events={events}
+            defaultView={Views.MONTH}
+            views={CALENDAR_VIEWS}
+            defaultDate={new Date()}
+            popup
+            style={{ height: "100%" }}
+            formats={calendarFormats}
+            messages={CALENDAR_MESSAGES}
+            eventPropGetter={eventPropGetter}
+            onSelectEvent={handleSelectEvent}
+            components={{ toolbar: ModernizeToolbar, event: CalendarEventContent }}
+          />
         </div>
       </div>
 
-      {calMode === "month" && !monthItemCount ? (
-        <div className="flex items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-surface px-4 py-3 text-sm text-muted">
-          <CalendarDays className="size-4 text-muted" aria-hidden="true" />
-          ไม่มีชิ้นงานในเดือนนี้
+      {noDateItems.length ? (
+        <div className={`${cardClass} p-4`}>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-ink">
+              ไม่มีวันที่ <span className="text-muted">({DATE_FIELD_LABELS[calDateField]})</span>
+            </h2>
+            <Chip tone="muted">{noDateItems.length.toLocaleString("th-TH")} ชิ้นงาน</Chip>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {noDateItems.map((item) => (
+              <NoDateItem
+                key={item.id}
+                item={item}
+                customer={customerById.get(item.customerId)}
+                onOpen={openItemModal}
+              />
+            ))}
+          </div>
         </div>
-      ) : null}
-
-      {calMode === "month" ? (
-        <NoDateZone
-          items={noDateItems}
-          customerById={customerById}
-          fieldLabel={DATE_FIELD_LABELS[calDateField]}
-        />
       ) : null}
     </section>
   );
 }
 
-function CalendarItem({
+function NoDateItem({
   item,
   customer,
   onOpen,
@@ -285,66 +372,10 @@ function CalendarItem({
       type="button"
       onClick={() => onOpen(item.id)}
       title={`${itemName(item)} · ${customer?.name || "ไม่ระบุลูกค้า"}`}
-      className={`block w-full cursor-pointer rounded-md border-l-2 px-1.5 py-1 text-left text-[11px] leading-snug transition hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-300 ${
+      className={`inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-lg border-l-2 px-2.5 py-1.5 text-left text-xs transition hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-300 ${
         overdue ? "border-error bg-error-light text-error-dark" : `border-transparent ${status.badge}`
       }`}
       style={overdue ? undefined : { borderLeftColor: channel.color }}
-    >
-      <div className="flex min-w-0 items-center gap-1">
-        {overdue ? (
-          <AlertTriangle className="size-3 shrink-0 text-error" aria-hidden="true" />
-        ) : (
-          <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: status.dot }} aria-hidden="true" />
-        )}
-        <span className="truncate font-semibold">{itemName(item)}</span>
-      </div>
-      <p className="mt-0.5 truncate text-[10px] text-muted">{customer?.name || "ไม่ระบุลูกค้า"}</p>
-    </button>
-  );
-}
-
-function NoDateZone({
-  items,
-  customerById,
-  fieldLabel,
-}: {
-  items: Item[];
-  customerById: Map<string, Customer>;
-  fieldLabel: string;
-}) {
-  return (
-    <div className={`${cardClass} p-4`}>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-ink">
-          ไม่มีวันที่ <span className="text-muted">({fieldLabel})</span>
-        </h2>
-        <Chip tone="muted">{items.length.toLocaleString("th-TH")} ชิ้นงาน</Chip>
-      </div>
-      {items.length ? (
-        <div className="flex flex-wrap gap-2">
-          {items.map((item) => (
-            <NoDateItem key={item.id} item={item} customer={customerById.get(item.customerId)} />
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm text-muted">ทุกชิ้นงานมี {fieldLabel} แล้ว</p>
-      )}
-    </div>
-  );
-}
-
-function NoDateItem({ item, customer }: { item: Item; customer: Customer | undefined }) {
-  const status = EXEC_MAP[item.execStatus] || EXEC_MAP.not_started;
-  const channel = CHANNEL_MAP[item.channel] || CHANNEL_MAP.other;
-  const overdue = isOverdue(item);
-
-  return (
-    <span
-      className={`inline-flex max-w-full items-center gap-1.5 rounded-lg border-l-2 px-2.5 py-1.5 text-xs ${
-        overdue ? "border-error bg-error-light text-error-dark" : `border-transparent ${status.badge}`
-      }`}
-      style={overdue ? undefined : { borderLeftColor: channel.color }}
-      title={`${itemName(item)} · ${customer?.name || "ไม่ระบุลูกค้า"}`}
     >
       {overdue ? (
         <AlertTriangle className="size-3 shrink-0 text-error" aria-hidden="true" />
@@ -353,158 +384,6 @@ function NoDateItem({ item, customer }: { item: Item; customer: Customer | undef
       )}
       <span className="min-w-0 truncate font-semibold">{itemName(item)}</span>
       <span className="min-w-0 truncate text-muted">· {customer?.name || "ไม่ระบุลูกค้า"}</span>
-    </span>
+    </button>
   );
-}
-
-const AGENDA_DATE_FORMATTER = new Intl.DateTimeFormat("th-TH", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
-
-function formatAgendaDate(value: string) {
-  const [year, month, day] = value.split("-").map(Number);
-  if (!year || !month || !day) return value;
-  return AGENDA_DATE_FORMATTER.format(new Date(year, month - 1, day));
-}
-
-function AgendaList({
-  items,
-  calDateField,
-  customerById,
-  onOpen,
-}: {
-  items: Item[];
-  calDateField: CalDateField;
-  customerById: Map<string, Customer>;
-  onOpen: (id: string) => void;
-}) {
-  const groups = useMemo(() => {
-    const dated = items
-      .filter((item) => item[calDateField])
-      .sort((a, b) => a[calDateField].localeCompare(b[calDateField]));
-    const undated = items.filter((item) => !item[calDateField]);
-    const map = new Map<string, Item[]>();
-    for (const item of dated) {
-      const key = item[calDateField];
-      const list = map.get(key) || [];
-      list.push(item);
-      map.set(key, list);
-    }
-    return { dateGroups: [...map.entries()], undated };
-  }, [items, calDateField]);
-
-  if (!items.length) {
-    return <div className={`${emptyCardClass} text-sm text-muted`}>ไม่มีชิ้นงานตามตัวกรอง</div>;
-  }
-
-  return (
-    <div className="space-y-4">
-      {groups.dateGroups.map(([dateKey, dayItems]) => (
-        <div key={dateKey} className={`overflow-hidden ${cardClass}`}>
-          <div className="flex items-center justify-between border-b border-border-soft bg-slate-100 px-4 py-2.5">
-            <p className="text-sm font-semibold text-ink">{formatAgendaDate(dateKey)}</p>
-            <span className="tnum text-xs font-semibold text-muted">
-              {dayItems.length.toLocaleString("th-TH")} งาน
-            </span>
-          </div>
-          <ul className="divide-y divide-border-soft">
-            {dayItems.map((item) => (
-              <AgendaRow
-                key={item.id}
-                item={item}
-                customer={customerById.get(item.customerId)}
-                onOpen={onOpen}
-              />
-            ))}
-          </ul>
-        </div>
-      ))}
-      {groups.undated.length ? (
-        <div className={`overflow-hidden ${cardClass}`}>
-          <div className="border-b border-border-soft bg-slate-100 px-4 py-2.5">
-            <p className="text-sm font-semibold text-muted">ไม่มีวันที่</p>
-          </div>
-          <ul className="divide-y divide-border-soft">
-            {groups.undated.map((item) => (
-              <AgendaRow
-                key={item.id}
-                item={item}
-                customer={customerById.get(item.customerId)}
-                onOpen={onOpen}
-              />
-            ))}
-          </ul>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function AgendaRow({
-  item,
-  customer,
-  onOpen,
-}: {
-  item: Item;
-  customer: Customer | undefined;
-  onOpen: (id: string) => void;
-}) {
-  const channel = CHANNEL_MAP[item.channel] || CHANNEL_MAP.other;
-  const overdue = isOverdue(item);
-  return (
-    <li>
-      <button
-        type="button"
-        onClick={() => onOpen(item.id)}
-        className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-100"
-      >
-        <span
-          className="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-semibold text-white"
-          style={{ backgroundColor: channel.color }}
-        >
-          {channel.label}
-        </span>
-        <span className="min-w-0 flex-1 truncate text-sm">
-          <span className="font-semibold text-ink">{customer?.name || "ไม่ระบุลูกค้า"}</span>
-          <span className="text-slate-300"> · </span>
-          <span className="text-muted">{itemName(item)}</span>
-        </span>
-        {overdue ? <AlertTriangle className="size-4 shrink-0 text-error" aria-hidden="true" /> : null}
-      </button>
-    </li>
-  );
-}
-
-function buildMonthCells(year: number, month: number) {
-  const first = new Date(year, month, 1);
-  const startDow = first.getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells: (number | null)[] = [];
-
-  for (let index = 0; index < startDow; index += 1) cells.push(null);
-  for (let day = 1; day <= daysInMonth; day += 1) cells.push(day);
-  while (cells.length % 7) cells.push(null);
-
-  return cells;
-}
-
-function groupItemsByDate(items: Item[], field: CalDateField) {
-  const groups = new Map<string, Item[]>();
-
-  items.forEach((item) => {
-    const value = item[field];
-    if (!value) return;
-    const list = groups.get(value) || [];
-    list.push(item);
-    groups.set(value, list);
-  });
-
-  return groups;
-}
-
-function dateString(year: number, month: number, day: number) {
-  return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
