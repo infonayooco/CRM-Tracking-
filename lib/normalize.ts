@@ -87,12 +87,16 @@ export function normalizeCustomer(customer: Partial<Customer>): Customer {
 }
 
 type ItemInput = Partial<
-  Omit<Item, "channel" | "execStatus" | "resultStatus" | "reportStatus" | "priority" | "progress">
+  Omit<
+    Item,
+    "channel" | "execStatus" | "resultStatus" | "reportStatus" | "renewalStatus" | "priority" | "progress"
+  >
 > & {
   channel?: unknown;
   execStatus?: unknown;
   resultStatus?: unknown;
   reportStatus?: unknown;
+  renewalStatus?: unknown;
   priority?: unknown;
   progress?: unknown;
 };
