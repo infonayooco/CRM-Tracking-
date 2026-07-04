@@ -54,3 +54,9 @@ export function can(role: AppRole | null | undefined, capability: Capability): b
   if (!role) return false;
   return CAPABILITIES[role].includes(capability);
 }
+
+// Parse an untrusted role string (e.g. from a form) into a valid AppRole, or
+// null (revoke / pending). Single source of truth via ALL_ROLES.
+export function parseRole(value: string): AppRole | null {
+  return (ALL_ROLES as readonly string[]).includes(value) ? (value as AppRole) : null;
+}

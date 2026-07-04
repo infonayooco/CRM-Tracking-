@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ALL_ROLES, can } from "@/lib/auth/permissions";
+import { ALL_ROLES, can, parseRole } from "@/lib/auth/permissions";
 
 // UI capability map must mirror the RLS policies in supabase/migrations.
 describe("role permissions", () => {
@@ -57,5 +57,12 @@ describe("role permissions", () => {
 
   it("covers all five roles", () => {
     expect([...ALL_ROLES].sort()).toEqual(["admin", "cs", "manager", "mkt", "sale"]);
+  });
+
+  it("parseRole accepts valid roles and maps anything else to null (revoke)", () => {
+    for (const role of ALL_ROLES) expect(parseRole(role)).toBe(role);
+    expect(parseRole("")).toBeNull();
+    expect(parseRole("superuser")).toBeNull();
+    expect(parseRole("ADMIN")).toBeNull();
   });
 });

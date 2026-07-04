@@ -221,7 +221,8 @@ export interface Database {
     Views: Record<never, never>;
     Functions: {
       admin_set_role: {
-        Args: { target_user: string; new_role: AppRole };
+        // new_role null revokes access (sets the user back to pending).
+        Args: { target_user: string; new_role: AppRole | null };
         Returns: undefined;
       };
       is_admin: {

@@ -115,12 +115,31 @@ begin
   if not public.is_admin() then
     raise exception 'Only admins can assign roles' using errcode = '42501';
   end if;
+  -- Enforce the "can't change your own role" guarantee at the DB layer, not just
+  -- in the app — otherwise an admin could self-revoke via a direct RPC call.
+  if target_user = auth.uid() then
+    raise exception 'Cannot change your own role' using errcode = '42501';
+  end if;
+  -- Serialize concurrent admin role changes (lock admin rows) and refuse to
+  -- demote the last admin, so two admins can't race each other into a
+  -- zero-admin lockout.
+  perform 1 from public.profiles where role = 'admin' for update;
+  if new_role is distinct from 'admin'
+    and (select role from public.profiles where id = target_user) = 'admin'
+    and (select count(*) from public.profiles where role = 'admin') <= 1 then
+    raise exception 'Cannot remove the last admin' using errcode = '42501';
+  end if;
   update public.profiles
     set role = new_role, updated_at = now()
     where id = target_user;
 end;
 $$;
 
+-- Scope RPC execution explicitly to authenticated (remove the default PUBLIC
+-- execute grant) — belt-and-suspenders on top of the internal auth.uid() checks.
+revoke execute on function public.user_role(uuid) from public;
+revoke execute on function public.is_admin() from public;
+revoke execute on function public.admin_set_role(uuid, public.app_role) from public;
 grant execute on function public.user_role(uuid) to authenticated;
 grant execute on function public.is_admin() to authenticated;
 grant execute on function public.admin_set_role(uuid, public.app_role) to authenticated;
@@ -133,13 +152,14 @@ alter table public.profiles enable row level security;
 -- re-apply (Postgres has no `create policy if exists`), matching the
 -- `drop ... if exists` idiom used for the triggers above.
 drop policy if exists "Profiles are viewable by authenticated users" on public.profiles;
--- A user may always read their OWN row (to learn they're pending); the rest of
--- the roster is visible only once they have an assigned role, so an unapproved
--- (pending) account can't enumerate teammates' emails/roles.
-create policy "Profiles are viewable by authenticated users"
+-- A user may always read their OWN row; the full roster (emails/roles) is
+-- visible only to admins (the user-management panel needs it). No other feature
+-- reads other users' profiles, so this keeps teammates' PII from being
+-- enumerable via the Data API by non-admins.
+create policy "Profiles are viewable by self or admins"
   on public.profiles for select
   to authenticated
-  using (auth.uid() = id or public.user_role(auth.uid()) is not null);
+  using (auth.uid() = id or public.is_admin());
 
 drop policy if exists "Users can insert their own profile" on public.profiles;
 create policy "Users can insert their own profile"
