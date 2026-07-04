@@ -1,26 +1,309 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ── Design system: "Modernize" (MUI-inspired soft admin) ─────────────── */
+@theme {
+  /* brand → Modernize periwinkle (recolors every existing brand-* usage) */
+  --color-brand-50: #eef3ff;
+  --color-brand-100: #dce6ff;
+  --color-brand-200: #bbccff;
+  --color-brand-300: #94abff;
+  --color-brand-400: #7a97ff;
+  --color-brand-500: #6e93ff;
+  --color-brand-600: #5d87ff; /* primary.main — solid buttons, active nav pill */
+  --color-brand-700: #4570ea; /* primary.dark — hover */
+  --color-brand-800: #3a5ccc;
+
+  /* semantic palette (main + light tint) — Modernize */
+  --color-primary: #5d87ff;
+  --color-primary-light: #ecf2ff;
+  --color-primary-dark: #4570ea;
+  --color-secondary: #49beff;
+  --color-secondary-light: #e8f7ff;
+  --color-success: #13deb9;
+  --color-success-light: #e6fffa;
+  --color-success-dark: #02b3a9;
+  --color-warning: #ffae1f;
+  --color-warning-light: #fef5e5;
+  --color-warning-dark: #9a6b00; /* legible warning text on light tint */
+  --color-error: #fa896b;
+  --color-error-light: #fdede8;
+  --color-error-dark: #c0392b; /* legible error text on light tint */
+  --color-info: #539bff;
+  --color-info-light: #ebf3fe;
+  --color-info-dark: #1565c0; /* legible info text on light tint */
+
+  /* accent (amber) kept, aligned to warning for legacy accent-* usage */
+  --color-accent-50: #fef5e5;
+  --color-accent-500: #ffae1f;
+  --color-accent-600: #ae8e59;
+
+  /* neutrals — Modernize greys on the visible steps */
+  --color-slate-100: #f2f6fa;
+  --color-slate-200: #eaeff4;
+  --color-slate-300: #dfe5ef;
+  --color-slate-800: #2a3547;
+  --color-slate-900: #1f2836;
+
+  /* semantic neutral tokens for the ui/ kit */
+  --color-ink: #2a3547;
+  --color-muted: #7c8fac;
+  --color-surface: #ffffff;
+  --color-border: #e5eaef;
+  --color-border-soft: #eaeff4;
+
+  /* the signature Modernize card elevation */
+  --shadow-card: rgb(145 158 171 / 0.3) 0px 0px 2px 0px, rgb(145 158 171 / 0.12) 0px 12px 24px -4px;
+  --shadow-soft: 0 9px 17.5px rgb(0 0 0 / 0.05);
+
+  --font-sans: var(--font-plus-jakarta-sans), var(--font-ibm-plex-sans-thai), sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+html {
+  min-height: 100%;
+  background: #f4f7fb;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100%;
+  margin: 0;
+  background: #f4f7fb;
+  color: #2a3547;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button {
+  font: inherit;
+}
+
+/* ── Base interaction polish (shared by all components) ───────────────── */
+a,
+button,
+select,
+input,
+[role="button"],
+summary {
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
+}
+
+/* visible keyboard focus for accessibility (WCAG) */
+:where(a, button, select, input, textarea, [tabindex], [role="button"]):focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* tabular figures for counts / prices / metrics — no layout shift */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    min-height: auto !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  body:has(.print-report) .app-shell,
+  body:has(.print-report) aside,
+  body:has(.print-report) #sidebar,
+  body:has(.print-report) #topbar,
+  body:has(.print-report) #mobileTopbar,
+  body:has(.print-report) .no-print,
+  .print-report-actions {
+    display: none !important;
+  }
+
+  .print-report {
+    position: static !important;
+    inset: auto !important;
+    z-index: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+  }
+
+  .print-report * {
+    color: #000000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  .print-report .print-page {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .print-report a {
+    color: #000000 !important;
+    text-decoration: underline;
+  }
+
+  .print-report .print-qt-group {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  body:has(.report-print-root),
+  body:has(.report-print-root) .app-shell,
+  body:has(.report-print-root) main {
+    min-height: auto !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  body:has(.report-print-root) aside,
+  body:has(.report-print-root) #sidebar,
+  body:has(.report-print-root) #topbar,
+  body:has(.report-print-root) #mobileTopbar,
+  body:has(.report-print-root) .no-print {
+    display: none !important;
+  }
+
+  body:has(.report-print-root) main {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body:has(.report-print-root) main > :not(.report-print-root) {
+    display: none !important;
+  }
+
+  .report-print-root {
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .report-print-root * {
+    color: #000000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  .report-print-root :is(header, section, article, div, ol, li, p, span) {
+    background-color: #ffffff !important;
+  }
+
+  .report-print-root .report-header,
+  .report-print-root .report-kpi-tile,
+  .report-print-root .report-panel,
+  .report-print-root .report-chart-card,
+  .report-print-root [aria-label="รายงานยอดขาย"] > header,
+  .report-print-root [aria-label="รายงานยอดขาย"] > section,
+  .report-print-root [aria-label="รายงานยอดขาย"] > .grid > section,
+  .report-print-root [aria-label="รายงานยอดขาย"] li {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* The chart grid and the KPI grid both rely on `lg:`/`xl:` Tailwind
+     breakpoints that a ~703px-wide A4 print page never reaches — force their
+     print layout explicitly instead of leaving them collapsed to 1 column. */
+  .report-print-root .report-chart-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10mm !important;
+  }
+
+  .report-print-root .report-chart-grid .report-chart-hero {
+    grid-column: 1 / -1 !important;
+  }
+
+  .report-print-root .report-kpi-grid {
+    width: 100% !important;
+  }
+
+  .report-print-root .report-chart-card {
+    min-height: 78mm;
+  }
+
+  /* Reduced from the screen's h-72 (288px) — smaller print real estate now that
+     more charts are visible by default (hero trend + status bars are open, not
+     buried in a collapsed section). */
+  .report-print-root .report-chart-body {
+    height: 55mm !important;
+    min-height: 55mm !important;
+    max-height: 55mm !important;
+    overflow: hidden !important;
+  }
+
+  .report-print-root .report-chart-hero.report-chart-card {
+    min-height: 105mm;
+  }
+
+  .report-print-root .report-chart-hero .report-chart-body {
+    height: 82mm !important;
+    min-height: 82mm !important;
+    max-height: 82mm !important;
+  }
+
+  /* ApexCharts renders SVG (not <canvas>): constrain it to the shrunk print box
+     so charts scale to fit rather than being clipped by the card's overflow. */
+  .report-print-root .report-chart-card svg,
+  .report-print-root .report-chart-card .apexcharts-canvas {
+    max-width: 100% !important;
+    max-height: 100% !important;
+  }
+
+  /* Long tables (owner/channel/customer-health performance) repeat their header
+     on each printed page instead of losing column context, and never split a
+     row across a page break. */
+  .report-print-root thead {
+    display: table-header-group;
+  }
+
+  .report-print-root tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Overview panels are grouped into collapsible <details> sections; a user's
+     collapsed state must not hide content from the printed report. */
+  details.report-section {
+    display: block;
+  }
+
+  details.report-section > div {
+    display: block !important;
+  }
 }
