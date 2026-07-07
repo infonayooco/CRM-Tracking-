@@ -58,7 +58,7 @@ export const RESULT_STATUS = [
   },
   {
     key: "in_progress",
-    label: "อยู่ระหว่างดำเนินการ",
+    label: "กำลังเก็บผลลัพธ์",
     icon: "ChartLine",
     dot: "#ffae1f",
     badge: "bg-warning-light text-warning-dark",

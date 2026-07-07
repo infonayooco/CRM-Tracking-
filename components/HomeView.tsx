@@ -265,6 +265,11 @@ export function HomeView() {
         </div>
       </div>
 
+      <div className="space-y-3">
+        <h2 className={sectionLabelClass}>ภาพรวมธุรกิจเดือนนี้</h2>
+        <HomeKpiBand items={scopedItems} customers={customers} />
+      </div>
+
       <header className="space-y-3">
         <div>
           <h1 className={pageTitleClass}>สิ่งที่ต้องทำ</h1>
@@ -347,11 +352,6 @@ export function HomeView() {
       ) : null}
 
       {clearedSections.length ? <ClearedStrip sections={clearedSections} /> : null}
-
-      <div className="space-y-3 border-t border-border-soft pt-6">
-        <h2 className={sectionLabelClass}>ภาพรวมธุรกิจเดือนนี้</h2>
-        <HomeKpiBand items={scopedItems} customers={customers} />
-      </div>
     </section>
   );
 }

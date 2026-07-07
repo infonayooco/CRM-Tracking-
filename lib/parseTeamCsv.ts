@@ -109,6 +109,7 @@ export function mapExec(value: unknown): ExecStatus {
 export function mapResult(value: unknown): ResultStatus {
   const mapping: Record<string, ResultStatus> = {
     "ยังไม่เก็บผลลัพธ์": "not_collected",
+    "กำลังเก็บผลลัพธ์": "in_progress",
     "อยู่ระหว่างดำเนินการ": "in_progress",
     "บรรลุผลลัพธ์": "achieved",
     not_collected: "not_collected",
