@@ -27,6 +27,7 @@ import {
 import { downloadFile } from "@/lib/exportData";
 import { parseTeamCsv } from "@/lib/parseTeamCsv";
 import { useStore, type AppViewKey } from "@/lib/store";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { Store } from "@/lib/types";
 import { Button, inputClass } from "@/components/ui";
 
@@ -246,21 +247,30 @@ export function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose:
           <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-light text-sm font-semibold text-primary-dark ring-1 ring-inset ring-border">
             {currentInitial || <UserRound className="size-4" aria-hidden="true" />}
           </div>
-          <label className="min-w-0 flex-1">
-            <span className="sr-only">ผู้ใช้ปัจจุบัน</span>
-            <select
-              value={currentUser}
-              onChange={(event) => setCurrentUser(event.target.value)}
-              className={`${inputClass} cursor-pointer font-semibold`}
-            >
-              <option value="">เลือกผู้ใช้</option>
-              {members.map((member) => (
-                <option key={member} value={member}>
-                  {member}
-                </option>
-              ))}
-            </select>
-          </label>
+          {isSupabaseConfigured() ? (
+            // Signed-in mode: the current user IS the logged-in identity (set by
+            // AppRoot from the session profile), so show it read-only — no picker
+            // and no impersonating another member.
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-ink">{currentUser || "—"}</p>
+            </div>
+          ) : (
+            <label className="min-w-0 flex-1">
+              <span className="sr-only">ผู้ใช้ปัจจุบัน</span>
+              <select
+                value={currentUser}
+                onChange={(event) => setCurrentUser(event.target.value)}
+                className={`${inputClass} cursor-pointer font-semibold`}
+              >
+                <option value="">เลือกผู้ใช้</option>
+                {members.map((member) => (
+                  <option key={member} value={member}>
+                    {member}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
         <label className="mt-3 flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-slate-100 px-3 py-2 text-sm font-semibold text-ink transition-colors hover:bg-primary-light">
           <span>งานของฉัน</span>

@@ -40,6 +40,12 @@ export function LoginForm() {
         />
       </label>
 
+      <div className="mt-2 text-right">
+        <Link href="/forgot-password" className="text-sm font-medium text-primary hover:underline">
+          ลืมรหัสผ่าน?
+        </Link>
+      </div>
+
       <button
         type="submit"
         disabled={pending}

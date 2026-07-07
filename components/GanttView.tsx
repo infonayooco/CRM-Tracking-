@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { GanttChartSquare } from "lucide-react";
 import { GanttChart } from "@/components/charts/apex/GanttChart";
 import { DashboardCard, emptyCardClass, pageTitleClass } from "@/components/ui";
+import { EXEC_STATUS } from "@/lib/constants";
 import { buildGanttRows, filteredItems } from "@/lib/derived";
 import { useStore } from "@/lib/store";
 import type { CalDateField } from "@/lib/types";
@@ -120,6 +121,19 @@ export function GanttView() {
           title="ไทม์ไลน์ชิ้นงาน"
           subtitle="ช่วงเวลาของแต่ละชิ้นงาน — Publish Date (หรือวันที่สร้าง) ถึง Finished Date/Deadline"
         >
+          <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            <span className="text-xs font-medium text-muted">สีแถบ = สถานะการดำเนินการ</span>
+            {EXEC_STATUS.map((status) => (
+              <span key={status.key} className="inline-flex items-center gap-1.5 text-xs text-muted">
+                <span
+                  className="size-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: status.dot }}
+                  aria-hidden="true"
+                />
+                {status.label}
+              </span>
+            ))}
+          </div>
           <GanttChart rows={rows} />
         </DashboardCard>
       ) : (

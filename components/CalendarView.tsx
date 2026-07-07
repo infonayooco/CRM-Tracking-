@@ -3,7 +3,7 @@
 import { format, getDay, parse, startOfWeek } from "date-fns";
 import { th } from "date-fns/locale";
 import { AlertTriangle, ChevronLeft, ChevronRight, UserRound } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Calendar, dateFnsLocalizer, Navigate, Views } from "react-big-calendar";
 import type { EventPropGetter, Formats, ToolbarProps, View } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -21,6 +21,22 @@ const DATE_FIELD_LABELS: Record<CalDateField, string> = {
 };
 
 const DATE_FIELD_ENTRIES = Object.entries(DATE_FIELD_LABELS) as [CalDateField, string][];
+
+// Calendar-only "which date to place events on". "all" is a VIEW mode local to
+// this component — deliberately NOT added to the shared CalDateField enum, which
+// filteredItems/GanttView use to index item[field]. In "all" mode each item is
+// placed on every date it has, tagged by type.
+type DateMode = "all" | CalDateField;
+// "ทุกวันที่" (not "ทั้งหมด") to avoid colliding with react-big-calendar's agenda
+// view button, which is also labelled "ทั้งหมด" — and it reads truer, since this
+// mode plots all three date *types*, not "everything".
+const DATE_MODE_ENTRIES: [DateMode, string][] = [["all", "ทุกวันที่"], ...DATE_FIELD_ENTRIES];
+const DATE_FIELD_SHORT: Record<CalDateField, string> = {
+  publishDate: "เผยแพร่",
+  deadline: "กำหนดส่ง",
+  finishedDate: "เสร็จ",
+};
+const ALL_DATE_FIELDS: CalDateField[] = ["publishDate", "deadline", "finishedDate"];
 
 const VIEW_LABELS: Record<View, string> = {
   month: "เดือน",
@@ -198,9 +214,15 @@ export function CalendarView() {
   const filters = useStore((state) => state.filters);
   const calDateField = useStore((state) => state.calDateField);
   const statusDim = useStore((state) => state.statusDim);
-  const setCalDateField = useStore((state) => state.setCalDateField);
   const setFilter = useStore((state) => state.setFilter);
   const openItemModal = useStore((state) => state.openItemModal);
+
+  // Local view mode, default "all" — every entry to the calendar starts on
+  // ทั้งหมด (all three date types), independent of the app-wide calDateField.
+  const [dateMode, setDateMode] = useState<DateMode>("all");
+  // Field used only for filteredItems' date-RANGE filter; "all" mode falls back
+  // to the app-wide calDateField (the calendar sets no range, so this is rare).
+  const rangeDateField: CalDateField = dateMode === "all" ? calDateField : dateMode;
 
   const mine = filters.mine;
 
@@ -219,22 +241,26 @@ export function CalendarView() {
         items,
         settings,
         filters,
-        calDateField,
+        calDateField: rangeDateField,
         statusDim,
       }),
-    [customers, items, settings, filters, calDateField, statusDim],
+    [customers, items, settings, filters, rangeDateField, statusDim],
   );
 
-  const events = useMemo<CalendarEvent[]>(
-    () =>
-      visibleItems.flatMap((item) => {
-        const date = parseCalendarDate(item[calDateField] || "");
+  const events = useMemo<CalendarEvent[]>(() => {
+    const fields = dateMode === "all" ? ALL_DATE_FIELDS : [dateMode];
+    return visibleItems.flatMap((item) => {
+      const customer = customerById.get(item.customerId);
+      // In "all" mode one item can land on up to 3 dates — each a distinct
+      // event (unique id per field), tagged so the date type is readable.
+      return fields.flatMap((field) => {
+        const date = parseCalendarDate(item[field] || "");
         if (!date) return [];
-        const customer = customerById.get(item.customerId);
+        const tag = dateMode === "all" ? `[${DATE_FIELD_SHORT[field]}] ` : "";
         return [
           {
-            id: item.id,
-            title: `${itemName(item)} · ${customer?.name || "ไม่ระบุลูกค้า"}`,
+            id: `${item.id}:${field}`,
+            title: `${tag}${itemName(item)} · ${customer?.name || "ไม่ระบุลูกค้า"}`,
             start: date,
             end: date,
             allDay: true as const,
@@ -242,13 +268,16 @@ export function CalendarView() {
             customer,
           },
         ];
-      }),
-    [visibleItems, calDateField, customerById],
-  );
+      });
+    });
+  }, [visibleItems, dateMode, customerById]);
 
   const noDateItems = useMemo(
-    () => visibleItems.filter((item) => !item[calDateField]),
-    [visibleItems, calDateField],
+    () =>
+      dateMode === "all"
+        ? visibleItems.filter((item) => !item.publishDate && !item.deadline && !item.finishedDate)
+        : visibleItems.filter((item) => !item[dateMode]),
+    [visibleItems, dateMode],
   );
 
   const handleSelectEvent = (event: CalendarEvent) => openItemModal(event.item.id);
@@ -271,14 +300,14 @@ export function CalendarView() {
             aria-label="วันที่ที่ใช้ใน Calendar"
             className="inline-flex items-center rounded-lg border border-slate-300 bg-white p-1"
           >
-            {DATE_FIELD_ENTRIES.map(([value, label]) => (
+            {DATE_MODE_ENTRIES.map(([value, label]) => (
               <button
                 key={value}
                 type="button"
-                onClick={() => setCalDateField(value)}
-                aria-pressed={calDateField === value}
+                onClick={() => setDateMode(value)}
+                aria-pressed={dateMode === value}
                 className={`inline-flex h-8 items-center rounded-md px-2.5 text-xs font-semibold transition-colors ${
-                  calDateField === value ? "bg-brand-600 text-white" : "text-muted hover:bg-slate-100"
+                  dateMode === value ? "bg-brand-600 text-white" : "text-muted hover:bg-slate-100"
                 }`}
               >
                 {label}
@@ -334,7 +363,10 @@ export function CalendarView() {
         <div className={`${cardClass} p-4`}>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-ink">
-              ไม่มีวันที่ <span className="text-muted">({DATE_FIELD_LABELS[calDateField]})</span>
+              ไม่มีวันที่{" "}
+              <span className="text-muted">
+                ({dateMode === "all" ? "ทุกวันที่" : DATE_FIELD_LABELS[dateMode]})
+              </span>
             </h2>
             <Chip tone="muted">{noDateItems.length.toLocaleString("th-TH")} ชิ้นงาน</Chip>
           </div>
