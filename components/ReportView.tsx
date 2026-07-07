@@ -459,7 +459,7 @@ export function ReportView() {
                 <KpiTile key={kpi.label} {...kpi} basisLabel={basisLabel} size="hero" />
               ))}
             </div>
-            <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-6">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:gap-6">
               {supportingKpis.map((kpi) => (
                 <StatTile
                   key={kpi.label}
