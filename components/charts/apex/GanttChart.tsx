@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ApexOptions } from "apexcharts";
 import { ApexChart, type ApexChartProps } from "./ApexChart";
 import { APEX, APEX_FONT, baseChartOptions } from "./apexTheme";
@@ -40,6 +40,10 @@ const MIN_HEIGHT = 220;
 const HEADER_ALLOWANCE = 60; // room for the x-axis labels below the bars
 
 export function GanttChart({ rows }: { rows: GanttRow[] }) {
+  // Captured once at mount via a lazy state initializer so render stays pure
+  // (react-hooks/purity) — the "today" reference line needn't tick mid-session.
+  const [todayMs] = useState(() => Date.now());
+
   const series = useMemo(
     () => [
       {
@@ -87,6 +91,27 @@ export function GanttChart({ rows }: { rows: GanttRow[] }) {
         ...base.grid,
         yaxis: { lines: { show: false } },
       },
+      // A "today" reference line so bars can be read against now at a glance
+      // (Apex clips it automatically if today falls outside the data range).
+      annotations: {
+        xaxis: [
+          {
+            x: todayMs,
+            strokeDashArray: 4,
+            borderColor: APEX.muted,
+            label: {
+              text: "วันนี้",
+              borderColor: APEX.muted,
+              style: {
+                color: "#ffffff",
+                background: APEX.muted,
+                fontFamily: APEX_FONT,
+                fontSize: "11px",
+              },
+            },
+          },
+        ],
+      },
       legend: { show: false },
       tooltip: {
         theme: "dark",
@@ -103,7 +128,7 @@ export function GanttChart({ rows }: { rows: GanttRow[] }) {
         },
       },
     };
-  }, [rows]);
+  }, [rows, todayMs]);
 
   if (!rows.length) {
     return (
