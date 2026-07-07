@@ -76,12 +76,7 @@ export function SalesSummary({ items, customers }: SalesSummaryProps) {
         />
         <div className="mt-4 divide-y divide-border">
           {itemTypeRows.map((row, index) => (
-            <ItemTypeRow
-              key={row.label}
-              row={row}
-              rank={index + 1}
-              maxCount={itemTypeRows[0]?.count || 0}
-            />
+            <ItemTypeRow key={row.label} row={row} rank={index + 1} />
           ))}
         </div>
       </section>
@@ -138,33 +133,19 @@ function SectionHeading({
   );
 }
 
-function ItemTypeRow({
-  row,
-  rank,
-  maxCount,
-}: {
-  row: SalesSummaryRow;
-  rank: number;
-  maxCount: number;
-}) {
-  const width = maxCount ? `${Math.max((row.count / maxCount) * 100, 4)}%` : "0%";
-
+// Clean ranked row (no bar): rank · ประเภทงาน · จำนวน (count) · มูลค่า (revenue),
+// right-aligned. Mirrors the BreakdownCard rows below for a consistent, mobile-safe
+// look. Rows arrive pre-sorted by count desc from salesByItemType.
+function ItemTypeRow({ row, rank }: { row: SalesSummaryRow; rank: number }) {
   return (
-    <div className="grid gap-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-      <div className="min-w-0">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="tnum grid size-6 shrink-0 place-items-center rounded-full bg-brand-50 text-xs font-bold text-brand-700">
-            {rank}
-          </span>
-          <p className="tnum truncate text-base font-semibold text-ink">{row.label}</p>
-        </div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-          <div className="h-full rounded-full bg-brand-600" style={{ width }} />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3 sm:min-w-56">
-        <Metric label="จำนวน" value={`${formatCount(row.count)} งาน`} strong />
-        <Metric label="มูลค่า" value={money(row.revenue)} />
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 py-3">
+      <span className="tnum grid size-7 shrink-0 place-items-center rounded-full bg-brand-50 text-xs font-bold text-brand-700">
+        {rank}
+      </span>
+      <p className="tnum truncate text-base font-semibold text-ink">{row.label}</p>
+      <div className="text-right">
+        <span className="tnum block text-base font-bold text-ink">{formatCount(row.count)} งาน</span>
+        <span className="tnum mt-0.5 block text-xs font-semibold text-muted">{money(row.revenue)}</span>
       </div>
     </div>
   );
@@ -214,29 +195,6 @@ function BreakdownCard({
         </p>
       )}
     </section>
-  );
-}
-
-function Metric({
-  label,
-  value,
-  strong = false,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-}) {
-  return (
-    <div className="min-w-0 text-right">
-      <p className="text-xs font-semibold text-muted">{label}</p>
-      <p
-        className={`tnum mt-0.5 truncate font-bold ${
-          strong ? "text-2xl text-brand-700" : "text-base text-ink"
-        }`}
-      >
-        {value}
-      </p>
-    </div>
   );
 }
 
