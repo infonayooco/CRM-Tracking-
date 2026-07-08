@@ -107,16 +107,32 @@ summary {
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Responsive tables → stacked "label: value" cards on mobile ──────────
+/* ── Responsive tables → stacked "label: value" cards when the CONTAINER is
+   narrow ──────────────────────────────────────────────────────────────────
    The report's wide data tables (owner / channel / itemType / attainment /
    customer-health / unbilled) carry a fixed min-width so they stay readable
-   on desktop and scroll inside their card. Below `sm` (640px) that forced
-   awkward left-right side-scrolling to read a single row, so each <tr>
-   reflows into a self-contained card: the header row is hidden and every
-   <td> shows its own column name from `data-label`. Scoped to
-   max-width:639.98px so it never touches the ~703px A4 print page (see the
-   @media print block below) or any `sm`+ screen — those keep the real table. */
-@media (max-width: 639.98px) {
+   and scroll inside their card. The trigger is a *container* query, not a
+   viewport one, because on iPad the viewport is 768–1024px but the table's
+   actual box is far narrower: the sidebar becomes persistent at md (288px)
+   and the performance panels sit in a lg:grid-cols-2, leaving each table only
+   ~340–500px. A viewport media query can't see that, so it never fired on
+   iPad and the tables overflowed. Each table's scroll wrapper is made a
+   size container below; when that box can no longer hold a table row the
+   rows reflow into self-contained cards (header hidden, each <td> labelled
+   from data-label). The 34rem threshold is the narrowest table's own
+   min-width: on desktop the 2-col performance cells are ~608px (the
+   max-w-[1400px] main, minus sidebar/padding/gap, halved) so those tables
+   stay real tables; on iPad the same cells collapse to ~276–434px and reflow.
+   The wider full-width tables (customer-health/unbilled) only get that narrow
+   on tablet/phone, so they reflow there too. Owner's 9-col table never fits a
+   2-col cell at any width (pre-existing) so it keeps scrolling on wide desktop
+   and reflows on iPad. Print resets container-type to normal (see @media
+   print) so the ~703px A4 page keeps the real table. */
+.overflow-x-auto:has(> table.responsive-table) {
+  container-type: inline-size;
+}
+
+@container (max-width: 34rem) {
   table.responsive-table {
     min-width: 0 !important; /* neutralize the sm+ min-w-[Nrem] so it can't overflow the page */
     width: 100%;
@@ -269,6 +285,13 @@ summary {
     min-height: auto !important;
     background: #ffffff !important;
     color: #000000 !important;
+  }
+
+  /* Disable the size-container in print so the container query never matches —
+     the ~703px A4 page keeps the real dense table (repeated <thead>, per-row
+     page-break rules), never the mobile card reflow. */
+  .overflow-x-auto:has(> table.responsive-table) {
+    container-type: normal !important;
   }
 
   body:has(.report-print-root) aside,

@@ -1114,7 +1114,7 @@ function CustomerHealthPanel({ rows }: { rows: CustomerHealth[] }) {
       </div>
       {riskRows.length ? (
         <div className="overflow-x-auto">
-          <table className="responsive-table w-full min-w-[40rem] text-sm">
+          <table className="responsive-table w-full min-w-[38rem] text-sm">
             <thead>
               <tr className="border-b border-border text-xs font-semibold text-muted">
                 <th className="py-2 pr-3 text-left">ลูกค้า</th>
