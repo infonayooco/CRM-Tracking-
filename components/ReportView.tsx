@@ -919,7 +919,7 @@ function ChannelPerformancePanel({ rows }: { rows: ChannelPerf[] }) {
         <p className="text-xs text-muted">ไม่ใช่แค่จำนวน — ดู %บรรลุผล · %ส่งรีพอร์ต · คะแนนเฉลี่ย</p>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[34rem] text-sm">
+        <table className="responsive-table w-full min-w-[34rem] text-sm">
           <thead>
             <tr className="border-b border-border text-xs font-semibold text-muted">
               <th className="py-2 pr-3 text-left">ช่องทาง</th>
@@ -942,16 +942,16 @@ function ChannelPerformancePanel({ rows }: { rows: ChannelPerf[] }) {
                     <span className="font-semibold text-ink">{row.label}</span>
                   </span>
                 </td>
-                <td className="tnum px-3 py-2.5 text-right text-ink">
+                <td data-label="ชิ้นงาน" className="tnum px-3 py-2.5 text-right text-ink">
                   {row.count.toLocaleString("th-TH")}
                 </td>
-                <td className="tnum px-3 py-2.5 text-right font-semibold text-ink">
+                <td data-label="%บรรลุผล" className="tnum px-3 py-2.5 text-right font-semibold text-ink">
                   {row.achievedPct}%
                 </td>
-                <td className="tnum px-3 py-2.5 text-right font-semibold text-ink">
+                <td data-label="%ส่งรีพอร์ต" className="tnum px-3 py-2.5 text-right font-semibold text-ink">
                   {row.reportSentPct}%
                 </td>
-                <td className="tnum py-2.5 pl-3 text-right text-ink">
+                <td data-label="คะแนนเฉลี่ย" className="tnum py-2.5 pl-3 text-right text-ink">
                   {row.ratedCount > 0
                     ? `⭐ ${row.avgRating.toFixed(1)} · ${row.ratedCount.toLocaleString("th-TH")}`
                     : "—"}
@@ -979,7 +979,7 @@ function AttainmentPanel({ summary }: { summary: AttainmentSummary }) {
       </div>
       {summary.groups.length ? (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[34rem] text-sm">
+          <table className="responsive-table w-full min-w-[34rem] text-sm">
             <thead>
               <tr className="border-b border-border text-xs font-semibold text-muted">
                 <th className="py-2 pr-3 text-left">ตัวชี้วัด</th>
@@ -993,16 +993,16 @@ function AttainmentPanel({ summary }: { summary: AttainmentSummary }) {
               {summary.groups.map((group) => (
                 <tr key={group.label}>
                   <td className="py-2.5 pr-3 font-semibold text-ink">{group.label}</td>
-                  <td className="tnum px-3 py-2.5 text-right text-ink">
+                  <td data-label="งาน" className="tnum px-3 py-2.5 text-right text-ink">
                     {group.count.toLocaleString("th-TH")}
                   </td>
-                  <td className="tnum px-3 py-2.5 text-right text-ink">
+                  <td data-label="เป้าหมาย" className="tnum px-3 py-2.5 text-right text-ink">
                     {group.totalTarget.toLocaleString("th-TH")}
                   </td>
-                  <td className="tnum px-3 py-2.5 text-right text-ink">
+                  <td data-label="ผลจริง" className="tnum px-3 py-2.5 text-right text-ink">
                     {group.totalActual.toLocaleString("th-TH")}
                   </td>
-                  <td className="tnum py-2.5 pl-3 text-right font-semibold">
+                  <td data-label="%บรรลุ" className="tnum py-2.5 pl-3 text-right font-semibold">
                     {group.attainmentPct === null ? (
                       <span className="text-muted">—</span>
                     ) : (
@@ -1114,7 +1114,7 @@ function CustomerHealthPanel({ rows }: { rows: CustomerHealth[] }) {
       </div>
       {riskRows.length ? (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[40rem] text-sm">
+          <table className="responsive-table w-full min-w-[40rem] text-sm">
             <thead>
               <tr className="border-b border-border text-xs font-semibold text-muted">
                 <th className="py-2 pr-3 text-left">ลูกค้า</th>
@@ -1129,15 +1129,15 @@ function CustomerHealthPanel({ rows }: { rows: CustomerHealth[] }) {
               {riskRows.map((row) => (
                 <tr key={row.customerId}>
                   <td className="py-2.5 pr-3 font-semibold text-ink">{row.name}</td>
-                  <td className="px-3 py-2.5">
+                  <td data-label="ระดับความเสี่ยง" className="px-3 py-2.5">
                     <CustomerHealthTierBadge tier={row.tier} />
                   </td>
-                  <td className="px-3 py-2.5 text-muted">{row.reason}</td>
-                  <td className="tnum px-3 py-2.5 text-right font-semibold text-error-dark">
+                  <td data-label="เหตุผล" className="px-3 py-2.5 text-muted">{row.reason}</td>
+                  <td data-label="รายได้เสี่ยง" className="tnum px-3 py-2.5 text-right font-semibold text-error-dark">
                     {money(row.revenueAtRisk)}
                   </td>
-                  <td className="tnum px-3 py-2.5 text-right text-ink">{money(row.revenue)}</td>
-                  <td className="tnum py-2.5 pl-3 text-right text-ink">
+                  <td data-label="รายได้รวม" className="tnum px-3 py-2.5 text-right text-ink">{money(row.revenue)}</td>
+                  <td data-label="%บรรลุ" className="tnum py-2.5 pl-3 text-right text-ink">
                     {row.achievedPct === null ? <span className="text-muted">—</span> : `${row.achievedPct}%`}
                   </td>
                 </tr>
@@ -1169,7 +1169,7 @@ function ItemTypePerformancePanel({ rows }: { rows: ItemTypePerf[] }) {
         <p className="text-xs text-muted">ฟอร์แมตไหนได้ผล — ไม่ใช่แค่จำนวน: %บรรลุผล · %ส่งรีพอร์ต · คะแนนเฉลี่ย</p>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[34rem] text-sm">
+        <table className="responsive-table w-full min-w-[34rem] text-sm">
           <thead>
             <tr className="border-b border-border text-xs font-semibold text-muted">
               <th className="py-2 pr-3 text-left">ประเภทงาน</th>
@@ -1183,16 +1183,16 @@ function ItemTypePerformancePanel({ rows }: { rows: ItemTypePerf[] }) {
             {rows.map((row) => (
               <tr key={row.itemType}>
                 <td className="py-2.5 pr-3 font-semibold text-ink">{row.itemType}</td>
-                <td className="tnum px-3 py-2.5 text-right text-ink">
+                <td data-label="ชิ้นงาน" className="tnum px-3 py-2.5 text-right text-ink">
                   {row.count.toLocaleString("th-TH")}
                 </td>
-                <td className="tnum px-3 py-2.5 text-right font-semibold text-ink">
+                <td data-label="%บรรลุผล" className="tnum px-3 py-2.5 text-right font-semibold text-ink">
                   {row.achievedPct}%
                 </td>
-                <td className="tnum px-3 py-2.5 text-right font-semibold text-ink">
+                <td data-label="%ส่งรีพอร์ต" className="tnum px-3 py-2.5 text-right font-semibold text-ink">
                   {row.reportSentPct}%
                 </td>
-                <td className="tnum py-2.5 pl-3 text-right text-ink">
+                <td data-label="คะแนนเฉลี่ย" className="tnum py-2.5 pl-3 text-right text-ink">
                   {row.ratedCount > 0
                     ? `⭐ ${row.avgRating.toFixed(1)} · ${row.ratedCount.toLocaleString("th-TH")}`
                     : "—"}
@@ -1224,7 +1224,7 @@ function OwnerPerformancePanel({
         <p className="text-xs text-muted">เทียบรายได้ตามช่วงที่เลือกกับเป้าหมายที่ตั้งไว้</p>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[58rem] text-sm">
+        <table className="responsive-table w-full min-w-[58rem] text-sm">
           <thead>
             <tr className="border-b border-border text-xs font-semibold text-muted">
               <th className="py-2 pr-3 text-left">เจ้าของงานขาย</th>
@@ -1250,11 +1250,11 @@ function OwnerPerformancePanel({
               return (
                 <tr key={row.owner}>
                   <td className="py-2.5 pr-3 font-semibold text-ink">{row.owner}</td>
-                  <td className="tnum px-3 py-2.5 text-right text-ink">
+                  <td data-label="ชิ้นงาน" className="tnum px-3 py-2.5 text-right text-ink">
                     {row.count.toLocaleString("th-TH")}
                   </td>
-                  <td className="tnum px-3 py-2.5 text-right text-ink">{money(row.revenue)}</td>
-                  <td className="px-3 py-2.5 text-right">
+                  <td data-label="รายได้" className="tnum px-3 py-2.5 text-right text-ink">{money(row.revenue)}</td>
+                  <td data-label="เป้าหมาย (quota)" className="px-3 py-2.5 text-right">
                     <input
                       type="text"
                       inputMode="numeric"
@@ -1270,7 +1270,7 @@ function OwnerPerformancePanel({
                       className="tnum w-24 rounded-md border border-border px-2 py-1 text-right text-sm text-ink outline-none transition-colors focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
                     />
                   </td>
-                  <td className="tnum px-3 py-2.5 text-right font-semibold">
+                  <td data-label="%บรรลุเป้า" className="tnum px-3 py-2.5 text-right font-semibold">
                     {attainmentPct === null ? (
                       <span className="text-muted">—</span>
                     ) : (
@@ -1279,18 +1279,18 @@ function OwnerPerformancePanel({
                       </span>
                     )}
                   </td>
-                  <td className="tnum px-3 py-2.5 text-right font-semibold text-ink">
+                  <td data-label="%บรรลุผล" className="tnum px-3 py-2.5 text-right font-semibold text-ink">
                     {row.achievedPct}%
                   </td>
-                  <td className="tnum px-3 py-2.5 text-right font-semibold text-ink">
+                  <td data-label="%ส่งรีพอร์ต" className="tnum px-3 py-2.5 text-right font-semibold text-ink">
                     {row.reportSentPct}%
                   </td>
-                  <td className="tnum px-3 py-2.5 text-right text-ink">
+                  <td data-label="คะแนนเฉลี่ย" className="tnum px-3 py-2.5 text-right text-ink">
                     {row.ratedCount > 0
                       ? `⭐ ${row.avgRating.toFixed(1)} · ${row.ratedCount.toLocaleString("th-TH")}`
                       : "—"}
                   </td>
-                  <td className="tnum py-2.5 pl-3 text-right">
+                  <td data-label="ต่ออายุ" className="tnum py-2.5 pl-3 text-right">
                     {row.renewalRate !== null ? (
                       <span className="font-semibold text-ink">
                         {row.renewalRate}%
@@ -1437,7 +1437,7 @@ function UnbilledQuotationsPanel({ summary }: { summary: UnbilledSummary }) {
         </p>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[36rem] text-sm">
+        <table className="responsive-table w-full min-w-[36rem] text-sm">
           <thead>
             <tr className="border-b border-border text-xs font-semibold text-muted">
               <th className="py-2 pr-3 text-left">QT</th>
@@ -1463,14 +1463,15 @@ function UnbilledQuotationsPanel({ summary }: { summary: UnbilledSummary }) {
                 className="cursor-pointer transition-colors hover:bg-slate-100 focus:outline-none focus-visible:bg-slate-100 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-100"
               >
                 <td className="py-2.5 pr-3 font-semibold text-brand-700">{row.qtNo}</td>
-                <td className="px-3 py-2.5 text-ink">{row.customerName}</td>
-                <td className="px-3 py-2.5">
+                <td data-label="ลูกค้า" className="px-3 py-2.5 text-ink">{row.customerName}</td>
+                <td data-label="สถานะ" className="px-3 py-2.5">
                   <UnbilledStatusBadge status={row.status} />
                 </td>
-                <td className="tnum px-3 py-2.5 text-right font-semibold text-error-dark">
+                <td data-label="ค้างวางบิล" className="tnum px-3 py-2.5 text-right font-semibold text-error-dark">
                   {money(row.unbilledRevenue)}
                 </td>
                 <td
+                  data-label="อายุ"
                   className={`tnum py-2.5 pl-3 text-right ${
                     row.ageDays !== null && row.ageDays > 30 ? "font-semibold text-error-dark" : "text-ink"
                   }`}
