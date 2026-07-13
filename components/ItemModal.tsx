@@ -972,6 +972,120 @@ function ItemModalContent({
               </label>
             </FormSection>
 
+            <FormSection title="งานย่อย (Subtasks)">
+              <div className="sm:col-span-2">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <span className="text-sm text-muted">
+                    แตกงานเป็นงานย่อย มอบหมายผู้รับผิดชอบ และกำหนดวันได้
+                  </span>
+                  <button
+                    type="button"
+                    onClick={addChecklistEntry}
+                    className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-100"
+                  >
+                    <Plus className="size-4" aria-hidden="true" />
+                    เพิ่มงานย่อย
+                  </button>
+                </div>
+
+                {form.checklist.length ? (
+                  <div className="space-y-3">
+                    {form.checklist.map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="space-y-3 rounded-lg border border-border bg-white p-3"
+                      >
+                        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={entry.done}
+                            onChange={(event) =>
+                              updateChecklistEntry(entry.id, { done: event.target.checked })
+                            }
+                            className="size-4 rounded border-slate-300 text-brand-600 focus-visible:ring-brand-100"
+                            aria-label="ทำงานย่อยเสร็จแล้ว"
+                          />
+                          <input
+                            value={entry.title}
+                            onChange={(event) =>
+                              updateChecklistEntry(entry.id, { title: event.target.value })
+                            }
+                            className={fieldClass}
+                            placeholder="หัวข้องานย่อย"
+                            aria-label="หัวข้องานย่อย"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeChecklistEntry(entry.id)}
+                            className="grid size-10 place-items-center rounded-lg text-muted transition hover:bg-error-light hover:text-error-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30"
+                            aria-label="ลบงานย่อย"
+                            title="ลบงานย่อย"
+                          >
+                            <Trash2 className="size-4" aria-hidden="true" />
+                          </button>
+                        </div>
+
+                        <textarea
+                          value={entry.description}
+                          onChange={(event) =>
+                            updateChecklistEntry(entry.id, { description: event.target.value })
+                          }
+                          rows={2}
+                          className={textareaClass}
+                          placeholder="รายละเอียดงานย่อย (ถ้ามี)"
+                          aria-label="รายละเอียดงานย่อย"
+                        />
+
+                        <div className="grid gap-2 sm:grid-cols-3">
+                          <label className="block">
+                            <span className={labelClass}>ผู้รับผิดชอบ</span>
+                            <input
+                              value={entry.assignee}
+                              onChange={(event) =>
+                                updateChecklistEntry(entry.id, { assignee: event.target.value })
+                              }
+                              list="item-modal-owner-list"
+                              className={fieldClass}
+                              placeholder="เลือกผู้รับผิดชอบ"
+                              aria-label="ผู้รับผิดชอบงานย่อย"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className={labelClass}>วันเริ่ม</span>
+                            <input
+                              type="date"
+                              value={entry.startDate}
+                              onChange={(event) =>
+                                updateChecklistEntry(entry.id, { startDate: event.target.value })
+                              }
+                              className={fieldClass}
+                              aria-label="วันเริ่มงานย่อย"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className={labelClass}>กำหนดส่ง</span>
+                            <input
+                              type="date"
+                              value={entry.dueDate}
+                              onChange={(event) =>
+                                updateChecklistEntry(entry.id, { dueDate: event.target.value })
+                              }
+                              className={fieldClass}
+                              aria-label="กำหนดส่งงานย่อย"
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-lg border border-dashed border-border bg-white px-3 py-2 text-xs text-muted">
+                    ยังไม่มีงานย่อย — กด “เพิ่มงานย่อย” เพื่อแตกงาน
+                  </p>
+                )}
+              </div>
+            </FormSection>
+
             <div className="pt-6">
               <details className="group rounded-lg border border-border bg-slate-50/70 px-4 py-3 open:pb-4">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-semibold text-ink [&::-webkit-details-marker]:hidden">
@@ -1013,74 +1127,6 @@ function ItemModalContent({
                       <span className="text-sm font-medium text-muted">%</span>
                     </span>
                   </label>
-
-                  <div className="sm:col-span-2">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium text-muted">งานย่อย (Task ย่อย)</span>
-                      <button
-                        type="button"
-                        onClick={addChecklistEntry}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-100"
-                      >
-                        <Plus className="size-4" aria-hidden="true" />
-                        เพิ่มงานย่อย
-                      </button>
-                    </div>
-
-                    {form.checklist.length ? (
-                      <div className="space-y-2">
-                        {form.checklist.map((entry) => (
-                          <div
-                            key={entry.id}
-                            className="space-y-2 rounded-lg border border-border bg-white p-2"
-                          >
-                            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={entry.done}
-                                onChange={(event) =>
-                                  updateChecklistEntry(entry.id, { done: event.target.checked })
-                                }
-                                className="size-4 rounded border-slate-300 text-brand-600 focus-visible:ring-brand-100"
-                                aria-label="ทำงานย่อยเสร็จแล้ว"
-                              />
-                              <input
-                                value={entry.text}
-                                onChange={(event) =>
-                                  updateChecklistEntry(entry.id, { text: event.target.value })
-                                }
-                                className={fieldClass}
-                                placeholder="ชื่องานย่อย"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => removeChecklistEntry(entry.id)}
-                                className="grid size-10 place-items-center rounded-lg text-muted transition hover:bg-error-light hover:text-error-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30"
-                                aria-label="ลบงานย่อย"
-                                title="ลบงานย่อย"
-                              >
-                                <Trash2 className="size-4" aria-hidden="true" />
-                              </button>
-                            </div>
-                            <input
-                              value={entry.assignee}
-                              onChange={(event) =>
-                                updateChecklistEntry(entry.id, { assignee: event.target.value })
-                              }
-                              list="item-modal-owner-list"
-                              className={fieldClass}
-                              placeholder="ผู้รับผิดชอบงานย่อย"
-                              aria-label="ผู้รับผิดชอบงานย่อย"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="rounded-lg border border-dashed border-border bg-white px-3 py-2 text-xs text-muted">
-                        ยังไม่มีงานย่อย
-                      </p>
-                    )}
-                  </div>
                 </div>
               </details>
             </div>
@@ -1227,9 +1273,12 @@ function parseNumberInput(value: string): number | null {
 function createChecklistEntry(): Item["checklist"][number] {
   return {
     id: `ck_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
-    text: "",
+    title: "",
+    description: "",
     done: false,
     assignee: "",
+    startDate: "",
+    dueDate: "",
   };
 }
 

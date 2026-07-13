@@ -61,18 +61,49 @@ describe("normalizeItem — metrics reconciliation", () => {
   });
 });
 
-describe("normalizeItem — subtask assignee", () => {
-  it("defaults assignee to '' for legacy rows and preserves a provided one", () => {
+describe("normalizeItem — subtasks", () => {
+  it("reconciles the legacy `text`/no-assignee shape and defaults new fields", () => {
     const item = normalizeItem({
       itemType: "x",
-      // legacy checklist without assignee
+      // legacy pre-subtask entries: `text` instead of `title`, no assignee/dates
       checklist: [
         { id: "c1", text: "ถ่ายรูป", done: false },
         { id: "c2", text: "ตัดต่อ", done: true, assignee: "พี่ก้อย" },
-      ] as Item["checklist"],
+      ] as unknown as Item["checklist"],
     });
+    expect(item.checklist[0].title).toBe("ถ่ายรูป");
     expect(item.checklist[0].assignee).toBe("");
+    expect(item.checklist[0].description).toBe("");
+    expect(item.checklist[0].startDate).toBe("");
+    expect(item.checklist[0].dueDate).toBe("");
+    expect(item.checklist[1].title).toBe("ตัดต่อ");
     expect(item.checklist[1].assignee).toBe("พี่ก้อย");
+  });
+
+  it("keeps a full subtask (title/description/assignee/dates) intact", () => {
+    const item = normalizeItem({
+      itemType: "x",
+      checklist: [
+        {
+          id: "c1",
+          title: "เขียนบท",
+          description: "ร่าง 2 เวอร์ชัน",
+          done: false,
+          assignee: "พี่ไซน์",
+          startDate: "2026-03-01",
+          dueDate: "2026-03-05",
+        },
+      ],
+    });
+    expect(item.checklist[0]).toEqual({
+      id: "c1",
+      title: "เขียนบท",
+      description: "ร่าง 2 เวอร์ชัน",
+      done: false,
+      assignee: "พี่ไซน์",
+      startDate: "2026-03-01",
+      dueDate: "2026-03-05",
+    });
   });
 });
 

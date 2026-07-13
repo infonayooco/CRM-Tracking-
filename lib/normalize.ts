@@ -210,9 +210,13 @@ export function normalizeItem(item: ItemInput, customerIds?: Set<string>): Item 
     checklist: Array.isArray(item.checklist)
       ? item.checklist.map((entry) => ({
           id: safeId(entry.id, "ck"),
-          text: String(entry.text || ""),
+          // Reconcile the pre-subtask shape (`text`) into `title` so old entries survive.
+          title: String(entry.title || (entry as { text?: unknown }).text || "").trim(),
+          description: String(entry.description || ""),
           done: Boolean(entry.done),
           assignee: String(entry.assignee || "").trim(),
+          startDate: isoDate(entry.startDate),
+          dueDate: isoDate(entry.dueDate),
         }))
       : [],
     activity: Array.isArray(item.activity)

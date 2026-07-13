@@ -53,7 +53,17 @@ describe("supabase mappers", () => {
       followUpNote: "ตามงาน",
       priority: "high",
       progress: 50,
-      checklist: [{ id: "ck_1", text: "ทำ", done: true, assignee: "พี่ไซน์" }],
+      checklist: [
+        {
+          id: "ck_1",
+          title: "ทำ",
+          description: "รายละเอียดงานย่อย",
+          done: true,
+          assignee: "พี่ไซน์",
+          startDate: "2026-02-01",
+          dueDate: "2026-02-10",
+        },
+      ],
       activity: [{ ts: "2026-01-01T00:00:00.000Z", text: "สร้าง" }],
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-05T00:00:00.000Z",

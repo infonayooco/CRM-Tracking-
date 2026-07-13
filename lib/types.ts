@@ -55,6 +55,21 @@ export interface Metric {
   actualValue: number | null;
 }
 
+export interface Subtask {
+  id: string;
+  /** Task heading. */
+  title: string;
+  /** Optional longer description. */
+  description: string;
+  done: boolean;
+  /** Assigned team member (empty = unassigned). */
+  assignee: string;
+  /** "" or YYYY-MM-DD. */
+  startDate: string;
+  /** "" or YYYY-MM-DD. */
+  dueDate: string;
+}
+
 export interface Item {
   id: string;
   customerId: string;
@@ -91,7 +106,8 @@ export interface Item {
   followUpNote: string;
   priority: PriorityKey;
   progress: number;
-  checklist: { id: string; text: string; done: boolean; assignee: string }[];
+  // Subtasks (งานย่อย). Stored in the `checklist` jsonb column for backward-compat.
+  checklist: Subtask[];
   activity: { ts: string; text: string }[];
   createdAt: string;
   updatedAt: string;
