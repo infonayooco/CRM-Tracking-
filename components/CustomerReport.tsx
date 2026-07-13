@@ -317,26 +317,31 @@ function ReportItem({ item }: { item: Item }) {
 }
 
 function MetricLine({ item }: { item: Item }) {
-  const hasNumeric = item.targetValue != null || item.actualValue != null;
-  if (!item.metricName && !hasNumeric) return null;
-  const pct =
-    item.targetValue && item.actualValue != null
-      ? Math.round((item.actualValue / item.targetValue) * 100)
-      : null;
+  if (!item.metrics.length) return null;
   return (
-    <p className="tnum mt-2 text-sm text-ink">
-      <span className="font-semibold">{item.metricName || "ตัววัดผล"}:</span>{" "}
-      {item.targetValue != null ? item.targetValue.toLocaleString("th-TH") : "—"} →{" "}
-      {item.actualValue != null ? item.actualValue.toLocaleString("th-TH") : "—"}
-      {item.metricUnit ? ` ${item.metricUnit}` : ""}
-      {pct !== null ? (
-        <span
-          className={`ml-2 font-semibold ${pct >= 100 ? "text-success-dark" : "text-warning-dark"}`}
-        >
-          {pct.toLocaleString("th-TH")}% ของเป้า
-        </span>
-      ) : null}
-    </p>
+    <>
+      {item.metrics.map((metric) => {
+        const pct =
+          metric.targetValue && metric.actualValue != null
+            ? Math.round((metric.actualValue / metric.targetValue) * 100)
+            : null;
+        return (
+          <p key={metric.id} className="tnum mt-2 text-sm text-ink">
+            <span className="font-semibold">{metric.name || "ตัววัดผล"}:</span>{" "}
+            {metric.targetValue != null ? metric.targetValue.toLocaleString("th-TH") : "—"} →{" "}
+            {metric.actualValue != null ? metric.actualValue.toLocaleString("th-TH") : "—"}
+            {metric.unit ? ` ${metric.unit}` : ""}
+            {pct !== null ? (
+              <span
+                className={`ml-2 font-semibold ${pct >= 100 ? "text-success-dark" : "text-warning-dark"}`}
+              >
+                {pct.toLocaleString("th-TH")}% ของเป้า
+              </span>
+            ) : null}
+          </p>
+        );
+      })}
+    </>
   );
 }
 

@@ -124,6 +124,7 @@ export interface Database {
           renewal_status: string;
           target: string;
           actual: string;
+          metrics: Json;
           metric_name: string;
           metric_unit: string;
           target_value: number | null;
@@ -159,6 +160,7 @@ export interface Database {
           renewal_status?: string;
           target?: string;
           actual?: string;
+          metrics?: Json;
           metric_name?: string;
           metric_unit?: string;
           target_value?: number | null;
@@ -194,6 +196,7 @@ export interface Database {
           renewal_status?: string;
           target?: string;
           actual?: string;
+          metrics?: Json;
           metric_name?: string;
           metric_unit?: string;
           target_value?: number | null;

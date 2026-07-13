@@ -910,25 +910,32 @@ export function attainmentSummary(items: Item[]): AttainmentSummary {
   let measured = 0;
 
   for (const item of items) {
-    const metric = item.metricName.trim();
-    if (!metric || item.targetValue == null || item.actualValue == null) continue;
-    measured += 1;
+    // Each item can carry multiple metrics now; every metric with a name AND both
+    // numbers contributes to its own metric+unit group. `measured` counts the ITEM
+    // once if any of its metrics is measurable (coverage vs total item count).
+    let itemMeasured = false;
+    for (const entry of item.metrics) {
+      const metric = entry.name.trim();
+      if (!metric || entry.targetValue == null || entry.actualValue == null) continue;
+      itemMeasured = true;
 
-    const unit = item.metricUnit.trim();
-    const key = `${metric}||${unit}`;
-    const group = groups.get(key) || {
-      metric,
-      unit,
-      label: unit ? `${metric} (${unit})` : metric,
-      count: 0,
-      totalTarget: 0,
-      totalActual: 0,
-      attainmentPct: null,
-    };
-    group.count += 1;
-    group.totalTarget += item.targetValue;
-    group.totalActual += item.actualValue;
-    groups.set(key, group);
+      const unit = entry.unit.trim();
+      const key = `${metric}||${unit}`;
+      const group = groups.get(key) || {
+        metric,
+        unit,
+        label: unit ? `${metric} (${unit})` : metric,
+        count: 0,
+        totalTarget: 0,
+        totalActual: 0,
+        attainmentPct: null,
+      };
+      group.count += 1;
+      group.totalTarget += entry.targetValue;
+      group.totalActual += entry.actualValue;
+      groups.set(key, group);
+    }
+    if (itemMeasured) measured += 1;
   }
 
   const result = [...groups.values()]

@@ -68,6 +68,9 @@ export function rowToItem(row: ItemRow): Item {
     renewalStatus: row.renewal_status,
     target: row.target,
     actual: row.actual,
+    // Null metrics (pre-migration / not-yet-backfilled rows) → undefined so
+    // normalizeItem synthesizes the list from the scalar columns below.
+    metrics: (row.metrics as Item["metrics"] | null) ?? undefined,
     metricName: row.metric_name,
     metricUnit: row.metric_unit,
     targetValue: row.target_value,
@@ -110,6 +113,7 @@ export function itemToRow(item: Item): ItemRow {
     renewal_status: item.renewalStatus,
     target: item.target,
     actual: item.actual,
+    metrics: toJson(item.metrics),
     metric_name: item.metricName,
     metric_unit: item.metricUnit,
     target_value: item.targetValue,

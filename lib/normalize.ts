@@ -14,6 +14,7 @@ import type {
   ExecStatus,
   InteractionType,
   Item,
+  Metric,
   PriorityKey,
   RenewalStatus,
   Store,
@@ -128,6 +129,36 @@ type ItemInput = Partial<
 // grow unbounded — only the most recent entries matter for the UI.
 const MAX_ACTIVITY = 50;
 
+// Reconcile an item's metric list with the legacy scalar metric columns.
+// `metrics` (when provided as an array — even empty) is the source of truth: it
+// respects an explicitly-empty list (user removed all rows). When absent
+// (legacy rows / CSV parse / pre-migration DB), synthesize a single metric from
+// the scalar fields. Fully-empty rows are dropped so blank rows aren't persisted.
+function resolveItemMetrics(item: ItemInput): Metric[] {
+  const toMetric = (
+    name: unknown,
+    unit: unknown,
+    target: unknown,
+    actual: unknown,
+    id?: unknown,
+  ): Metric => ({
+    id: safeId(typeof id === "string" ? id : undefined, "metric"),
+    name: String(name || "").trim(),
+    unit: String(unit || "").trim(),
+    targetValue: normalizePrice(target),
+    actualValue: normalizePrice(actual),
+  });
+  const isEmpty = (m: Metric) => !m.name && !m.unit && m.targetValue === null && m.actualValue === null;
+
+  if (Array.isArray(item.metrics)) {
+    return item.metrics
+      .map((m) => toMetric(m?.name, m?.unit, m?.targetValue, m?.actualValue, m?.id))
+      .filter((m) => !isEmpty(m));
+  }
+  const legacy = toMetric(item.metricName, item.metricUnit, item.targetValue, item.actualValue);
+  return isEmpty(legacy) ? [] : [legacy];
+}
+
 export function normalizeItem(item: ItemInput, customerIds?: Set<string>): Item {
   const execStatus = isExecStatus(item.execStatus) ? item.execStatus : "not_started";
   const resultStatus = isResultStatus(item.resultStatus) ? item.resultStatus : "not_collected";
@@ -138,6 +169,8 @@ export function normalizeItem(item: ItemInput, customerIds?: Set<string>): Item 
   const priority = isPriority(item.priority) ? item.priority : "medium";
   const isoDate = (value: unknown) => (/^\d{4}-\d{2}-\d{2}$/.test(String(value || "")) ? String(value) : "");
   const rawCustomerId = String(item.customerId || "");
+  const metrics = resolveItemMetrics(item);
+  const head = metrics[0];
 
   return {
     id: safeId(item.id, "item"),
@@ -154,10 +187,12 @@ export function normalizeItem(item: ItemInput, customerIds?: Set<string>): Item 
     renewalStatus,
     target: String(item.target || ""),
     actual: String(item.actual || ""),
-    metricName: String(item.metricName || "").trim(),
-    metricUnit: String(item.metricUnit || "").trim(),
-    targetValue: normalizePrice(item.targetValue),
-    actualValue: normalizePrice(item.actualValue),
+    metrics,
+    // Scalar mirror of metrics[0] for backward-compat (DB columns / legacy readers).
+    metricName: head?.name ?? "",
+    metricUnit: head?.unit ?? "",
+    targetValue: head?.targetValue ?? null,
+    actualValue: head?.actualValue ?? null,
     reportSentDate: isoDate(item.reportSentDate),
     link: safeUrl(item.link),
     rating: clampInt(item.rating, 0, 5),
@@ -177,6 +212,7 @@ export function normalizeItem(item: ItemInput, customerIds?: Set<string>): Item 
           id: safeId(entry.id, "ck"),
           text: String(entry.text || ""),
           done: Boolean(entry.done),
+          assignee: String(entry.assignee || "").trim(),
         }))
       : [],
     activity: Array.isArray(item.activity)

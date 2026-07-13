@@ -53,6 +53,15 @@ const secondaryButtonClass = ghostBtnClass;
 const destructiveButtonClass =
   "inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium text-error-dark transition hover:bg-error-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30";
 
+// Metric row in form state — numeric fields stay strings while editing.
+type MetricForm = {
+  id: string;
+  name: string;
+  unit: string;
+  targetValue: string;
+  actualValue: string;
+};
+
 type FormState = {
   customerId: string;
   newCustomerName: string;
@@ -70,10 +79,7 @@ type FormState = {
   renewalStatus: RenewalStatus;
   target: string;
   actual: string;
-  metricName: string;
-  metricUnit: string;
-  targetValue: string;
-  actualValue: string;
+  metrics: MetricForm[];
   reportSentDate: string;
   rating: number;
   link: string;
@@ -215,13 +221,13 @@ function ItemModalContent({
   const handleResultsToggle = (event: SyntheticEvent<HTMLDetailsElement>) => {
     setResultsExpanded(event.currentTarget.open);
   };
-  const targetActualPct = useMemo(() => {
-    const target = Number(form.targetValue.replace(/,/g, ""));
-    const actual = Number(form.actualValue.replace(/,/g, ""));
-    if (!form.targetValue.trim() || !form.actualValue.trim()) return null;
+  const metricPct = (targetValue: string, actualValue: string) => {
+    const target = Number(targetValue.replace(/,/g, ""));
+    const actual = Number(actualValue.replace(/,/g, ""));
+    if (!targetValue.trim() || !actualValue.trim()) return null;
     if (!Number.isFinite(target) || !Number.isFinite(actual) || target === 0) return null;
     return Math.round((actual / target) * 100);
-  }, [form.targetValue, form.actualValue]);
+  };
 
   // useFocusTrap must run BEFORE the initial-focus effect below so its effect
   // captures the real trigger (document.activeElement at mount) — if it ran
@@ -295,6 +301,26 @@ function ItemModalContent({
     }));
   };
 
+  const updateMetricEntry = (id: string, patch: Partial<MetricForm>) => {
+    setForm((current) => ({
+      ...current,
+      metrics: current.metrics.map((entry) =>
+        entry.id === id ? { ...entry, ...patch, id: entry.id } : entry,
+      ),
+    }));
+  };
+
+  const addMetricEntry = () => {
+    setForm((current) => ({ ...current, metrics: [...current.metrics, createMetricEntry()] }));
+  };
+
+  const removeMetricEntry = (id: string) => {
+    setForm((current) => ({
+      ...current,
+      metrics: current.metrics.filter((entry) => entry.id !== id),
+    }));
+  };
+
   const handleCustomerChange = (value: string) => {
     setForm((current) => ({
       ...current,
@@ -339,10 +365,15 @@ function ItemModalContent({
       renewalStatus: form.renewalStatus,
       target: form.target.trim(),
       actual: form.actual.trim(),
-      metricName: form.metricName.trim(),
-      metricUnit: form.metricUnit.trim(),
-      targetValue: parseNumberInput(form.targetValue),
-      actualValue: parseNumberInput(form.actualValue),
+      // metrics is the source of truth — normalizeItem drops fully-empty rows and
+      // mirrors metrics[0] back into the legacy scalar columns.
+      metrics: form.metrics.map((entry) => ({
+        id: entry.id,
+        name: entry.name.trim(),
+        unit: entry.unit.trim(),
+        targetValue: parseNumberInput(entry.targetValue),
+        actualValue: parseNumberInput(entry.actualValue),
+      })),
       reportSentDate:
         form.reportStatus === "sent" && !form.reportSentDate
           ? new Date().toISOString().slice(0, 10)
@@ -627,7 +658,10 @@ function ItemModalContent({
                   </p>
                   <ul className="mt-2 grid gap-1 text-xs sm:grid-cols-2">
                     <CloseoutCheck done={form.resultStatus !== "not_collected"} label="บันทึกสถานะผลลัพธ์" />
-                    <CloseoutCheck done={Boolean(form.actualValue.trim())} label="กรอกตัวเลขผลจริง" />
+                    <CloseoutCheck
+                      done={form.metrics.some((entry) => entry.actualValue.trim())}
+                      label="กรอกตัวเลขผลจริง"
+                    />
                     <CloseoutCheck done={form.rating > 0} label="ให้คะแนน ⭐" />
                     <CloseoutCheck done={form.reportStatus === "sent"} label="ส่งรีพอร์ตให้ลูกค้า" />
                   </ul>
@@ -725,56 +759,97 @@ function ItemModalContent({
                     />
                   </label>
 
-                  <label className="block">
-                    <span className={labelClass}>ตัวชี้วัด (metric)</span>
-                    <input
-                      value={form.metricName}
-                      onChange={(event) => updateField("metricName", event.target.value)}
-                      className={fieldClass}
-                      placeholder="เช่น ยอดเข้าถึง / ยอดวิว / ยอดจอง"
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className={labelClass}>หน่วย</span>
-                    <input
-                      value={form.metricUnit}
-                      onChange={(event) => updateField("metricUnit", event.target.value)}
-                      className={fieldClass}
-                      placeholder="ครั้ง / % / คน"
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className={labelClass}>เป้าหมาย (ตัวเลข)</span>
-                    <input
-                      inputMode="numeric"
-                      value={form.targetValue}
-                      onChange={(event) => updateField("targetValue", event.target.value)}
-                      className={fieldClass}
-                      placeholder="0"
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className={labelClass}>ผลจริง (ตัวเลข)</span>
-                    <input
-                      inputMode="numeric"
-                      value={form.actualValue}
-                      onChange={(event) => updateField("actualValue", event.target.value)}
-                      className={fieldClass}
-                      placeholder="0"
-                    />
-                    {targetActualPct !== null ? (
-                      <span
-                        className={`mt-1 block text-xs font-semibold ${
-                          targetActualPct >= 100 ? "text-success-dark" : "text-warning-dark"
-                        }`}
+                  <div className="sm:col-span-2">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-muted">ตัวชี้วัด (metrics)</span>
+                      <button
+                        type="button"
+                        onClick={addMetricEntry}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-100"
                       >
-                        {targetActualPct.toLocaleString("th-TH")}% ของเป้าหมาย
-                      </span>
-                    ) : null}
-                  </label>
+                        <Plus className="size-4" aria-hidden="true" />
+                        เพิ่มตัวชี้วัด
+                      </button>
+                    </div>
+
+                    {form.metrics.length ? (
+                      <div className="space-y-3">
+                        {form.metrics.map((entry) => {
+                          const pct = metricPct(entry.targetValue, entry.actualValue);
+                          return (
+                            <div key={entry.id} className="rounded-lg border border-border bg-white p-3">
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                <input
+                                  value={entry.name}
+                                  onChange={(event) =>
+                                    updateMetricEntry(entry.id, { name: event.target.value })
+                                  }
+                                  className={fieldClass}
+                                  placeholder="ตัวชี้วัด เช่น ยอดเข้าถึง / ยอดวิว"
+                                  aria-label="ชื่อตัวชี้วัด"
+                                />
+                                <input
+                                  value={entry.unit}
+                                  onChange={(event) =>
+                                    updateMetricEntry(entry.id, { unit: event.target.value })
+                                  }
+                                  className={fieldClass}
+                                  placeholder="หน่วย เช่น ครั้ง / % / คน"
+                                  aria-label="หน่วยของตัวชี้วัด"
+                                />
+                                <input
+                                  inputMode="numeric"
+                                  value={entry.targetValue}
+                                  onChange={(event) =>
+                                    updateMetricEntry(entry.id, { targetValue: event.target.value })
+                                  }
+                                  className={fieldClass}
+                                  placeholder="เป้าหมาย (ตัวเลข)"
+                                  aria-label="เป้าหมาย (ตัวเลข)"
+                                />
+                                <input
+                                  inputMode="numeric"
+                                  value={entry.actualValue}
+                                  onChange={(event) =>
+                                    updateMetricEntry(entry.id, { actualValue: event.target.value })
+                                  }
+                                  className={fieldClass}
+                                  placeholder="ผลจริง (ตัวเลข)"
+                                  aria-label="ผลจริง (ตัวเลข)"
+                                />
+                              </div>
+                              <div className="mt-2 flex items-center justify-between gap-2">
+                                {pct !== null ? (
+                                  <span
+                                    className={`text-xs font-semibold ${
+                                      pct >= 100 ? "text-success-dark" : "text-warning-dark"
+                                    }`}
+                                  >
+                                    {pct.toLocaleString("th-TH")}% ของเป้าหมาย
+                                  </span>
+                                ) : (
+                                  <span />
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => removeMetricEntry(entry.id)}
+                                  className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-medium text-muted transition hover:bg-error-light hover:text-error-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30"
+                                  aria-label="ลบตัวชี้วัด"
+                                >
+                                  <Trash2 className="size-4" aria-hidden="true" />
+                                  ลบ
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="rounded-lg border border-dashed border-border bg-white px-3 py-2 text-xs text-muted">
+                        ยังไม่มีตัวชี้วัด — กด “เพิ่มตัวชี้วัด” เพื่อบันทึกผลลัพธ์เป็นตัวเลข
+                      </p>
+                    )}
+                  </div>
 
                   {form.reportStatus === "sent" ? (
                     <label className="block">
@@ -941,14 +1016,14 @@ function ItemModalContent({
 
                   <div className="sm:col-span-2">
                     <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium text-muted">เช็คลิสต์</span>
+                      <span className="text-sm font-medium text-muted">งานย่อย (Task ย่อย)</span>
                       <button
                         type="button"
                         onClick={addChecklistEntry}
                         className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-100"
                       >
                         <Plus className="size-4" aria-hidden="true" />
-                        เพิ่ม
+                        เพิ่มงานย่อย
                       </button>
                     </div>
 
@@ -957,40 +1032,52 @@ function ItemModalContent({
                         {form.checklist.map((entry) => (
                           <div
                             key={entry.id}
-                            className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2"
+                            className="space-y-2 rounded-lg border border-border bg-white p-2"
                           >
+                            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={entry.done}
+                                onChange={(event) =>
+                                  updateChecklistEntry(entry.id, { done: event.target.checked })
+                                }
+                                className="size-4 rounded border-slate-300 text-brand-600 focus-visible:ring-brand-100"
+                                aria-label="ทำงานย่อยเสร็จแล้ว"
+                              />
+                              <input
+                                value={entry.text}
+                                onChange={(event) =>
+                                  updateChecklistEntry(entry.id, { text: event.target.value })
+                                }
+                                className={fieldClass}
+                                placeholder="ชื่องานย่อย"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeChecklistEntry(entry.id)}
+                                className="grid size-10 place-items-center rounded-lg text-muted transition hover:bg-error-light hover:text-error-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30"
+                                aria-label="ลบงานย่อย"
+                                title="ลบงานย่อย"
+                              >
+                                <Trash2 className="size-4" aria-hidden="true" />
+                              </button>
+                            </div>
                             <input
-                              type="checkbox"
-                              checked={entry.done}
+                              value={entry.assignee}
                               onChange={(event) =>
-                                updateChecklistEntry(entry.id, { done: event.target.checked })
+                                updateChecklistEntry(entry.id, { assignee: event.target.value })
                               }
-                              className="size-4 rounded border-slate-300 text-brand-600 focus-visible:ring-brand-100"
-                              aria-label="ทำรายการเช็คลิสต์เสร็จแล้ว"
-                            />
-                            <input
-                              value={entry.text}
-                              onChange={(event) =>
-                                updateChecklistEntry(entry.id, { text: event.target.value })
-                              }
+                              list="item-modal-owner-list"
                               className={fieldClass}
-                              placeholder="รายการเช็คลิสต์"
+                              placeholder="ผู้รับผิดชอบงานย่อย"
+                              aria-label="ผู้รับผิดชอบงานย่อย"
                             />
-                            <button
-                              type="button"
-                              onClick={() => removeChecklistEntry(entry.id)}
-                              className="grid size-10 place-items-center rounded-lg text-muted transition hover:bg-error-light hover:text-error-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/30"
-                              aria-label="ลบรายการเช็คลิสต์"
-                              title="ลบรายการเช็คลิสต์"
-                            >
-                              <Trash2 className="size-4" aria-hidden="true" />
-                            </button>
                           </div>
                         ))}
                       </div>
                     ) : (
                       <p className="rounded-lg border border-dashed border-border bg-white px-3 py-2 text-xs text-muted">
-                        ยังไม่มีเช็คลิสต์
+                        ยังไม่มีงานย่อย
                       </p>
                     )}
                   </div>
@@ -1063,10 +1150,14 @@ function createFormState(
     renewalStatus: item?.renewalStatus || "pending",
     target: item?.target || "",
     actual: item?.actual || "",
-    metricName: item?.metricName || "",
-    metricUnit: item?.metricUnit || "",
-    targetValue: item?.targetValue != null ? String(item.targetValue) : "",
-    actualValue: item?.actualValue != null ? String(item.actualValue) : "",
+    metrics:
+      item?.metrics.map((metric) => ({
+        id: metric.id,
+        name: metric.name,
+        unit: metric.unit,
+        targetValue: metric.targetValue != null ? String(metric.targetValue) : "",
+        actualValue: metric.actualValue != null ? String(metric.actualValue) : "",
+      })) || [],
     reportSentDate: item?.reportSentDate || "",
     rating: item?.rating || 0,
     link: item?.link || "",
@@ -1138,6 +1229,17 @@ function createChecklistEntry(): Item["checklist"][number] {
     id: `ck_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
     text: "",
     done: false,
+    assignee: "",
+  };
+}
+
+function createMetricEntry(): MetricForm {
+  return {
+    id: `metric_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+    name: "",
+    unit: "",
+    targetValue: "",
+    actualValue: "",
   };
 }
 

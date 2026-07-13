@@ -4,7 +4,7 @@ import type { Customer, Item } from "@/lib/types";
 // fields, so these factories fill valid defaults and let each test state only
 // what matters. (Not a *.test file, so vitest won't collect it as a suite.)
 export function makeItem(overrides: Partial<Item> = {}): Item {
-  return {
+  const item: Item = {
     id: "item-x",
     customerId: "c1",
     qtNo: "",
@@ -19,6 +19,7 @@ export function makeItem(overrides: Partial<Item> = {}): Item {
     renewalStatus: "pending",
     target: "",
     actual: "",
+    metrics: [],
     metricName: "",
     metricUnit: "",
     targetValue: null,
@@ -40,6 +41,23 @@ export function makeItem(overrides: Partial<Item> = {}): Item {
     updatedAt: "2020-01-01T00:00:00.000Z",
     ...overrides,
   };
+  // Mirror scalar metric fields into metrics[] (like normalizeItem) so callers can
+  // keep passing metricName/targetValue overrides; an explicit metrics override wins.
+  if (!overrides.metrics) {
+    item.metrics =
+      item.metricName || item.metricUnit || item.targetValue != null || item.actualValue != null
+        ? [
+            {
+              id: "metric-x",
+              name: item.metricName,
+              unit: item.metricUnit,
+              targetValue: item.targetValue,
+              actualValue: item.actualValue,
+            },
+          ]
+        : [];
+  }
+  return item;
 }
 
 export function makeCustomer(overrides: Partial<Customer> = {}): Customer {

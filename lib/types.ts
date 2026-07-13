@@ -45,6 +45,16 @@ export interface Customer {
   interactions: CustomerInteraction[];
 }
 
+export interface Metric {
+  id: string;
+  /** Metric label, e.g. "ยอดเข้าถึง". */
+  name: string;
+  /** Unit, e.g. "ครั้ง" / "%". */
+  unit: string;
+  targetValue: number | null;
+  actualValue: number | null;
+}
+
 export interface Item {
   id: string;
   customerId: string;
@@ -60,6 +70,12 @@ export interface Item {
   renewalStatus: RenewalStatus;
   target: string;
   actual: string;
+  /**
+   * Multiple close-out metrics. Source of truth for the metric list; the scalar
+   * metricName/metricUnit/targetValue/actualValue below mirror metrics[0] for
+   * backward-compat (DB scalar columns, legacy readers). See normalizeItem.
+   */
+  metrics: Metric[];
   metricName: string;
   metricUnit: string;
   targetValue: number | null;
@@ -75,7 +91,7 @@ export interface Item {
   followUpNote: string;
   priority: PriorityKey;
   progress: number;
-  checklist: { id: string; text: string; done: boolean }[];
+  checklist: { id: string; text: string; done: boolean; assignee: string }[];
   activity: { ts: string; text: string }[];
   createdAt: string;
   updatedAt: string;

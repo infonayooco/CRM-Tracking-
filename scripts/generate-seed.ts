@@ -51,6 +51,7 @@ function itemRow(i: Item): string {
     quote(i.renewalStatus),
     text(i.target),
     text(i.actual),
+    jsonb(i.metrics),
     text(i.metricName),
     text(i.metricUnit),
     numOrNull(i.targetValue),
@@ -77,7 +78,7 @@ const CUSTOMER_COLS =
   "id, name, province, province_code, sales_owner, contact_person, phone, email, line_id, color, interactions, created_at";
 const ITEM_COLS =
   "id, customer_id, qt_no, inv_no, channel, item_type, detail, price, exec_status, result_status, " +
-  "report_status, renewal_status, target, actual, metric_name, metric_unit, target_value, actual_value, " +
+  "report_status, renewal_status, target, actual, metrics, metric_name, metric_unit, target_value, actual_value, " +
   "report_sent_date, link, rating, deadline, publish_date, finished_date, notes, follow_up_date, " +
   "follow_up_note, priority, progress, checklist, activity, created_at, updated_at";
 
