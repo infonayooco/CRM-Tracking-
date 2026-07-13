@@ -21,6 +21,9 @@ function customerRow(c: Customer): string {
     quote(c.id),
     text(c.name),
     text(c.province),
+    // province_code is "" for legacy/unmatched names in the app model; the FK
+    // column is nullable, so an empty code maps to SQL NULL (mirrors the backfill).
+    c.provinceCode ? quote(c.provinceCode) : "NULL",
     text(c.salesOwner),
     text(c.contactPerson),
     text(c.phone),
@@ -71,7 +74,7 @@ function itemRow(i: Item): string {
 }
 
 const CUSTOMER_COLS =
-  "id, name, province, sales_owner, contact_person, phone, email, line_id, color, interactions, created_at";
+  "id, name, province, province_code, sales_owner, contact_person, phone, email, line_id, color, interactions, created_at";
 const ITEM_COLS =
   "id, customer_id, qt_no, inv_no, channel, item_type, detail, price, exec_status, result_status, " +
   "report_status, renewal_status, target, actual, metric_name, metric_unit, target_value, actual_value, " +

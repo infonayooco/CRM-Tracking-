@@ -19,6 +19,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import type { Customer, InteractionType } from "@/lib/types";
+import { PROVINCES_SORTED_TH } from "@/lib/provinces";
 import { cardClass, ghostBtnClass, inputClass, primaryBtnClass, sectionLabelClass } from "@/components/ui";
 
 const CUSTOM_OWNER_VALUE = "__custom_owner__";
@@ -58,7 +59,7 @@ const destructiveButtonClass =
 
 type FormState = {
   name: string;
-  province: string;
+  provinceCode: string;
   salesOwner: string;
   contactPerson: string;
   phone: string;
@@ -206,7 +207,7 @@ function CustomerEditModalContent({
 
     updateCustomer(customer.id, {
       name: form.name,
-      province: form.province,
+      provinceCode: form.provinceCode,
       salesOwner: form.salesOwner,
       contactPerson: form.contactPerson,
       phone: form.phone,
@@ -543,7 +544,7 @@ function CustomerCreateModalContent({ onClose }: { onClose: () => void }) {
 
     upsertCustomer({
       name: form.name,
-      province: form.province,
+      provinceCode: form.provinceCode,
       salesOwner: form.salesOwner,
       contactPerson: form.contactPerson,
       phone: form.phone,
@@ -661,11 +662,18 @@ function CustomerFormFields({
 
       <label className="block">
         <span className={labelClass}>จังหวัด</span>
-        <input
-          value={form.province}
-          onChange={(event) => onUpdateField("province", event.target.value)}
+        <select
+          value={form.provinceCode}
+          onChange={(event) => onUpdateField("provinceCode", event.target.value)}
           className={inputClass}
-        />
+        >
+          <option value="">ไม่ระบุจังหวัด</option>
+          {PROVINCES_SORTED_TH.map((province) => (
+            <option key={province.code} value={province.code}>
+              {province.th}
+            </option>
+          ))}
+        </select>
       </label>
 
       <label className="block">
@@ -770,7 +778,7 @@ function CustomerFormFields({
 function createFormState(customer: Customer): FormState {
   return {
     name: customer.name,
-    province: customer.province,
+    provinceCode: customer.provinceCode,
     salesOwner: customer.salesOwner,
     contactPerson: customer.contactPerson,
     phone: customer.phone,
@@ -783,7 +791,7 @@ function createFormState(customer: Customer): FormState {
 function createEmptyFormState(): FormState {
   return {
     name: "",
-    province: "",
+    provinceCode: "",
     salesOwner: "",
     contactPerson: "",
     phone: "",

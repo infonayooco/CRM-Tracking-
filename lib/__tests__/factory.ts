@@ -47,6 +47,7 @@ export function makeCustomer(overrides: Partial<Customer> = {}): Customer {
     id: "c1",
     name: "ลูกค้าทดสอบ",
     province: "ขอนแก่น",
+    provinceCode: "TH-40",
     salesOwner: "พี่ไซน์",
     contactPerson: "",
     phone: "",

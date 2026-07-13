@@ -27,7 +27,14 @@ export interface CustomerInteraction {
 export interface Customer {
   id: string;
   name: string;
+  /**
+   * Thai province name — kept as the display/search/filter value and derived
+   * from provinceCode when a code is set (see normalizeCustomer). Legacy
+   * free-text that matches no known province is preserved until re-edited.
+   */
   province: string;
+  /** ISO 3166-2:TH province code (e.g. "TH-40"); "" when unset/unmatched. */
+  provinceCode: string;
   salesOwner: string;
   contactPerson: string;
   phone: string;

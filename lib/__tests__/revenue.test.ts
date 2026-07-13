@@ -6,10 +6,10 @@ import { SEED_CSV } from "@/lib/seedCsv";
 import { makeItem } from "./factory";
 
 const seed = parseTeamCsv(SEED_CSV);
-const SEED_TOTAL = 1_175_700;
+const SEED_TOTAL = 1_294_700;
 
 describe("revenueBreakdown — money identities must always hold", () => {
-  it("total equals the sum of every item price (seed = ฿1,175,700)", () => {
+  it("total equals the sum of every item price (seed = ฿1,294,700)", () => {
     expect(revenueBreakdown(seed.items).total).toBe(SEED_TOTAL);
   });
 
@@ -51,8 +51,8 @@ describe("revenueBreakdown — money identities must always hold", () => {
 describe("dashboardStats — seed headline numbers", () => {
   const stats = dashboardStats(seed.items, seed.customers);
 
-  it("counts 130 items and 34 customers", () => {
-    expect(stats.totalItems).toBe(130);
+  it("counts 144 items and 34 customers", () => {
+    expect(stats.totalItems).toBe(144);
     expect(stats.totalCustomers).toBe(34);
   });
 

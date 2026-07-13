@@ -99,6 +99,25 @@ describe("upsertCustomer — reusing an existing customer preserves its stored f
     expect(stored.createdAt).toBe(originalCreatedAt);
   });
 
+  it("keeps province and provinceCode in sync when reusing a record via the code picker", () => {
+    // Regression: the merge branch carried `province` but not `provinceCode`, so
+    // updating an existing customer through the code-based picker left the code
+    // stale (province "อุดรธานี" but provinceCode "TH-40"). They must move together.
+    // Existing province left blank so the name match reuses this record (a
+    // different non-empty province would be a deliberate non-match, per above).
+    useStore.setState({
+      customers: [makeCustomer({ id: "c1", name: "ลูกค้าเดิม", province: "", provinceCode: "" })],
+      items: [],
+      members: [],
+    });
+
+    useStore.getState().upsertCustomer({ name: "ลูกค้าเดิม", provinceCode: "TH-41" });
+
+    const stored = useStore.getState().customers.find((customer) => customer.id === "c1")!;
+    expect(stored.provinceCode).toBe("TH-41");
+    expect(stored.province).toBe("อุดรธานี");
+  });
+
   it("creates a brand-new customer (no existing match) using the normalized fields as-is", () => {
     useStore.setState({ customers: [], items: [], members: [] });
 

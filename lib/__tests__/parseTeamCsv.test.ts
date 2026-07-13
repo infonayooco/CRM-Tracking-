@@ -5,8 +5,8 @@ import { SEED_CSV } from "../seedCsv";
 describe("parseTeamCsv — seed parity", () => {
   const r = parseTeamCsv(SEED_CSV);
 
-  it("yields 130 items and 34 customers", () => {
-    expect(r.items.length).toBe(130);
+  it("yields 144 items and 34 customers", () => {
+    expect(r.items.length).toBe(144);
     expect(r.customers.length).toBe(34);
   });
 
@@ -17,8 +17,8 @@ describe("parseTeamCsv — seed parity", () => {
     ).toBe(9);
   });
 
-  it("total revenue is 1,175,700", () => {
-    expect(r.items.reduce((a, it) => a + (it.price || 0), 0)).toBe(1175700);
+  it("total revenue is 1,294,700", () => {
+    expect(r.items.reduce((a, it) => a + (it.price || 0), 0)).toBe(1294700);
   });
 });
 

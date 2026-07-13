@@ -7,6 +7,7 @@ import {
   RESULT_MAP,
   STORE_VERSION,
 } from "./constants";
+import { PROVINCE_BY_CODE, PROVINCE_CODE_BY_TH, provinceNameTh } from "./provinces";
 import type {
   ChannelKey,
   Customer,
@@ -63,11 +64,33 @@ export function createEmptyStore(): Store {
   };
 }
 
+// Reconcile a customer's province code and free-text name into a consistent pair.
+// A valid code wins — the name is derived from it, which keeps the two in sync and
+// closes the migration's "stale-on-edit" gap. Otherwise match the free-text Thai
+// name back to a code; unmatched legacy text is preserved with an empty code.
+function resolveProvince(
+  code: string | null | undefined,
+  name: string | null | undefined,
+): { province: string; provinceCode: string } {
+  const trimmedCode = String(code ?? "").trim();
+  if (trimmedCode && PROVINCE_BY_CODE[trimmedCode]) {
+    return { province: provinceNameTh(trimmedCode), provinceCode: trimmedCode };
+  }
+  const trimmedName = String(name ?? "").trim();
+  const matchedCode = PROVINCE_CODE_BY_TH[trimmedName];
+  if (matchedCode) {
+    return { province: trimmedName, provinceCode: matchedCode };
+  }
+  return { province: trimmedName, provinceCode: "" };
+}
+
 export function normalizeCustomer(customer: Partial<Customer>): Customer {
+  const { province, provinceCode } = resolveProvince(customer.provinceCode, customer.province);
   return {
     id: safeId(customer.id, "cus"),
     name: String(customer.name || "(ไม่มีชื่อลูกค้า)").trim(),
-    province: String(customer.province || "").trim(),
+    province,
+    provinceCode,
     salesOwner: String(customer.salesOwner || "").trim(),
     contactPerson: String(customer.contactPerson ?? "").trim(),
     phone: String(customer.phone ?? "").trim(),

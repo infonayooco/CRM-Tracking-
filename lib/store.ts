@@ -411,11 +411,16 @@ export const useStore = create<StoreState>()(
         // createdAt, since normalizeCustomer fills every unspecified field with a
         // default. A brand-new customer has no prior record to preserve, so it keeps
         // `normalized` as-is.
+        // province and provinceCode must move together (a valid code is authoritative
+        // and its name is derived) — sourcing them from the same object keeps them in
+        // sync and avoids the stale-code desync the province migration warned about.
+        const provinceSupplied = Boolean(normalized.province);
         const nextCustomer = existing
           ? {
               ...existing,
               name: normalized.name || existing.name,
-              province: normalized.province || existing.province,
+              province: provinceSupplied ? normalized.province : existing.province,
+              provinceCode: provinceSupplied ? normalized.provinceCode : existing.provinceCode,
               salesOwner: normalized.salesOwner || existing.salesOwner,
             }
           : normalized;

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui";
 import { CHANNEL, EXEC_STATUS, PRIORITY, RENEWAL_STATUS, REPORT_STATUS, RESULT_STATUS } from "@/lib/constants";
 import { rankedItemTypeOptions } from "@/lib/itemTypeOptions";
+import { PROVINCES_SORTED_TH } from "@/lib/provinces";
 import { execToProgress } from "@/lib/normalize";
 import { useStore } from "@/lib/store";
 import { useFocusTrap } from "@/lib/useFocusTrap";
@@ -55,7 +56,7 @@ const destructiveButtonClass =
 type FormState = {
   customerId: string;
   newCustomerName: string;
-  newCustomerProvince: string;
+  newCustomerProvinceCode: string;
   newCustomerSalesOwner: string;
   qtNo: string;
   invNo: string;
@@ -299,7 +300,7 @@ function ItemModalContent({
       ...current,
       customerId: value,
       newCustomerName: "",
-      newCustomerProvince: "",
+      newCustomerProvinceCode: "",
       newCustomerSalesOwner: currentUser,
     }));
     setErrors((current) => ({ ...current, customer: undefined }));
@@ -319,7 +320,7 @@ function ItemModalContent({
     const customerId = isNewCustomer
       ? upsertCustomer({
           name: form.newCustomerName.trim(),
-          province: form.newCustomerProvince.trim(),
+          provinceCode: form.newCustomerProvinceCode,
           salesOwner: form.newCustomerSalesOwner.trim(),
         })
       : form.customerId;
@@ -487,12 +488,18 @@ function ItemModalContent({
                   </label>
                   <label className="block">
                     <span className={labelClass}>จังหวัด</span>
-                    <input
-                      value={form.newCustomerProvince}
-                      onChange={(event) => updateField("newCustomerProvince", event.target.value)}
+                    <select
+                      value={form.newCustomerProvinceCode}
+                      onChange={(event) => updateField("newCustomerProvinceCode", event.target.value)}
                       className={fieldClass}
-                      placeholder="จังหวัด"
-                    />
+                    >
+                      <option value="">ไม่ระบุจังหวัด</option>
+                      {PROVINCES_SORTED_TH.map((province) => (
+                        <option key={province.code} value={province.code}>
+                          {province.th}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                   <label className="block">
                     <span className={labelClass}>เจ้าของงานขาย</span>
@@ -1042,7 +1049,7 @@ function createFormState(
       ? item.customerId
       : prefill?.customerId || customers[0]?.id || NEW_CUSTOMER_VALUE,
     newCustomerName: "",
-    newCustomerProvince: "",
+    newCustomerProvinceCode: "",
     newCustomerSalesOwner: currentUser,
     qtNo: item ? item.qtNo || "" : prefill?.qtNo || "",
     invNo: item?.invNo || "",

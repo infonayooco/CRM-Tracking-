@@ -25,6 +25,7 @@ export interface Database {
           display_name: string | null;
           sales_owner: string | null;
           role: AppRole | null;
+          province_code: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -34,6 +35,7 @@ export interface Database {
           display_name?: string | null;
           sales_owner?: string | null;
           role?: AppRole | null;
+          province_code?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -43,6 +45,7 @@ export interface Database {
           display_name?: string | null;
           sales_owner?: string | null;
           role?: AppRole | null;
+          province_code?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -65,6 +68,7 @@ export interface Database {
           id: string;
           name: string;
           province: string;
+          province_code: string | null;
           sales_owner: string;
           contact_person: string;
           phone: string;
@@ -78,6 +82,7 @@ export interface Database {
           id: string;
           name: string;
           province?: string;
+          province_code?: string | null;
           sales_owner?: string;
           contact_person?: string;
           phone?: string;
@@ -91,6 +96,7 @@ export interface Database {
           id?: string;
           name?: string;
           province?: string;
+          province_code?: string | null;
           sales_owner?: string;
           contact_person?: string;
           phone?: string;

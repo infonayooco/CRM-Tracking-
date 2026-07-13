@@ -65,6 +65,15 @@ describe("supabase mappers", () => {
     expect(rowToCustomer(customerToRow(customer))).toEqual(customer);
   });
 
+  it("writes province_code and resolves it from legacy text on read", () => {
+    // Write path: the picker-selected code lands in the DB column.
+    expect(customerToRow(customer).province_code).toBe("TH-40");
+    // Legacy read path: a row with NULL province_code but a matching Thai name
+    // is self-healed to a code (client-side reconciliation).
+    const legacyRow = { ...customerToRow(customer), province_code: null };
+    expect(rowToCustomer(legacyRow).provinceCode).toBe("TH-40");
+  });
+
   it("round-trips a fully-populated item", () => {
     expect(rowToItem(itemToRow(item))).toEqual(item);
   });

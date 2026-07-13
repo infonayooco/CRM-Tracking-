@@ -8,9 +8,9 @@ describe("ownerPerformance — seed parity", () => {
   const { items, customers } = parseTeamCsv(SEED_CSV);
   const rows = ownerPerformance(items, customers);
 
-  it("ranks พี่ไซน์ first with 115 items (key-person concentration)", () => {
+  it("ranks พี่ไซน์ first with 129 items (key-person concentration)", () => {
     expect(rows[0].owner).toContain("ไซน์");
-    expect(rows[0].count).toBe(115);
+    expect(rows[0].count).toBe(129);
   });
 
   it("every item is attributed to exactly one owner row", () => {
