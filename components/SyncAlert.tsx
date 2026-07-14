@@ -2,7 +2,7 @@
 
 import { AlertTriangle, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { onSyncError } from "@/lib/data/sync";
+import { acknowledgeSyncError, onSyncError } from "@/lib/data/sync";
 
 // Shown when a write to Supabase fails, so a rejected/failed save isn't silent.
 // The change stays in the local store and is retried on the next edit.
@@ -10,6 +10,16 @@ export function SyncAlert() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => onSyncError(() => setVisible(true)), []);
+
+  // Dismissing must not permanently silence an ONGOING failure (e.g. a
+  // persistent RLS error retried on every edit) — acknowledgeSyncError() clears
+  // the sync module's dedupe key, so the next retry of the same failure is
+  // treated as newly-reportable and reopens this banner instead of the user
+  // being left thinking a dismissed failure means it was resolved.
+  const dismiss = () => {
+    acknowledgeSyncError();
+    setVisible(false);
+  };
 
   if (!visible) return null;
 
@@ -29,7 +39,7 @@ export function SyncAlert() {
         </p>
         <button
           type="button"
-          onClick={() => setVisible(false)}
+          onClick={dismiss}
           className="grid size-8 shrink-0 place-items-center rounded-lg text-warning-dark transition hover:bg-warning/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning/40"
           aria-label="ปิด"
           title="ปิด"
