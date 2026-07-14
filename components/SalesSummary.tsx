@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   BarChart3,
   CalendarDays,
@@ -18,6 +18,9 @@ import {
   salesByItemType,
   salesByMonth,
   salesBySalesOwner,
+  sortSalesRows,
+  type SalesSortDir,
+  type SalesSortKey,
   type SalesSummaryRow,
 } from "@/lib/derived";
 import type { Customer, Item } from "@/lib/types";
@@ -28,15 +31,30 @@ interface SalesSummaryProps {
   customers: Customer[];
 }
 
+const controlClass =
+  "h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-ink outline-none transition focus-visible:border-brand-600 focus-visible:ring-2 focus-visible:ring-brand-100";
+
 export function SalesSummary({ items, customers }: SalesSummaryProps) {
-  const itemTypeRows = useMemo(() => salesByItemType(items), [items]);
-  const customerRows = useMemo(
-    () => salesByCustomer(items, customers).slice(0, 10),
-    [items, customers],
+  const [sortKey, setSortKey] = useState<SalesSortKey>("count");
+  const [sortDir, setSortDir] = useState<SalesSortDir>("desc");
+  const itemTypeRows = useMemo(
+    () => sortSalesRows(salesByItemType(items), sortKey, sortDir),
+    [items, sortKey, sortDir],
   );
-  const channelRows = useMemo(() => salesByChannel(items), [items]);
-  const monthRows = useMemo(() => salesByMonth(items), [items]);
-  const ownerRows = useMemo(() => salesBySalesOwner(items, customers), [items, customers]);
+  const customerRows = useMemo(
+    // sort BEFORE the top-10 slice so "least" shows the correct 10
+    () => sortSalesRows(salesByCustomer(items, customers), sortKey, sortDir).slice(0, 10),
+    [items, customers, sortKey, sortDir],
+  );
+  const channelRows = useMemo(
+    () => sortSalesRows(salesByChannel(items), sortKey, sortDir),
+    [items, sortKey, sortDir],
+  );
+  const monthRows = useMemo(() => salesByMonth(items), [items]); // chronological — not re-sorted
+  const ownerRows = useMemo(
+    () => sortSalesRows(salesBySalesOwner(items, customers), sortKey, sortDir),
+    [items, customers, sortKey, sortDir],
+  );
   const totalRevenue = useMemo(
     () => items.reduce((sum, item) => sum + (item.price || 0), 0),
     [items],
@@ -65,6 +83,28 @@ export function SalesSummary({ items, customers }: SalesSummaryProps) {
               รวม {formatCount(items.length)} งาน · {money(totalRevenue)}
             </p>
           </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+          <span className="text-xs font-semibold text-muted">เรียงตาม</span>
+          <select
+            value={sortKey}
+            onChange={(event) => setSortKey(event.target.value as SalesSortKey)}
+            className={controlClass}
+            aria-label="เรียงตามตัวชี้วัด"
+          >
+            <option value="count">จำนวนงาน</option>
+            <option value="revenue">มูลค่า</option>
+          </select>
+          <select
+            value={sortDir}
+            onChange={(event) => setSortDir(event.target.value as SalesSortDir)}
+            className={controlClass}
+            aria-label="ทิศทางการเรียง"
+          >
+            <option value="desc">มาก → น้อย</option>
+            <option value="asc">น้อย → มาก</option>
+          </select>
         </div>
       </header>
 

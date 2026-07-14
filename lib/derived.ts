@@ -61,6 +61,24 @@ function sortSalesRowsByCount(rows: SalesSummaryRow[]) {
   );
 }
 
+export type SalesSortKey = "count" | "revenue";
+export type SalesSortDir = "desc" | "asc";
+
+// Reorder sales rows by count or revenue, ascending or descending. The other
+// metric is the tiebreaker (flipped with direction); label is a stable final tie.
+export function sortSalesRows(
+  rows: SalesSummaryRow[],
+  key: SalesSortKey,
+  dir: SalesSortDir,
+): SalesSummaryRow[] {
+  const factor = dir === "asc" ? -1 : 1;
+  return [...rows].sort((a, b) => {
+    const primary = key === "count" ? b.count - a.count : b.revenue - a.revenue;
+    const secondary = key === "count" ? b.revenue - a.revenue : b.count - a.count;
+    return factor * (primary || secondary) || a.label.localeCompare(b.label, "th");
+  });
+}
+
 function salesRowsFrom(items: Item[], labelForItem: (item: Item) => string) {
   const groups = new Map<string, SalesSummaryRow>();
 

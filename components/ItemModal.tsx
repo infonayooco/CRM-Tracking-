@@ -1039,16 +1039,24 @@ function ItemModalContent({
                         <div className="grid gap-2 sm:grid-cols-3">
                           <label className="block">
                             <span className={labelClass}>ผู้รับผิดชอบ</span>
-                            <input
+                            <select
                               value={entry.assignee}
                               onChange={(event) =>
                                 updateChecklistEntry(entry.id, { assignee: event.target.value })
                               }
-                              list="item-modal-owner-list"
                               className={fieldClass}
-                              placeholder="เลือกผู้รับผิดชอบ"
                               aria-label="ผู้รับผิดชอบงานย่อย"
-                            />
+                            >
+                              <option value="">ยังไม่มอบหมาย</option>
+                              {entry.assignee && !ownerOptions.includes(entry.assignee) ? (
+                                <option value={entry.assignee}>{entry.assignee}</option>
+                              ) : null}
+                              {ownerOptions.map((owner) => (
+                                <option key={owner} value={owner}>
+                                  {owner}
+                                </option>
+                              ))}
+                            </select>
                           </label>
                           <label className="block">
                             <span className={labelClass}>วันเริ่ม</span>
