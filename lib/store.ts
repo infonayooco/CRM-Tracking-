@@ -71,6 +71,11 @@ export interface StoreState extends Store {
   statusDim: StatusDimKey;
   initialized: boolean;
   ownerQuotas: Record<string, number>;
+  // Registered-account roster for the assignee dropdown, loaded by
+  // lib/data/sync.ts hydrateFromSupabase() via setTeamRoster(). Read-only for
+  // everything else; empty (and the app still works) in standalone mode or if
+  // the RPC fails. Never persisted to localStorage — see partialize below.
+  teamRoster: string[];
   modalItemId: string | null;
   isItemModalOpen: boolean;
   // Transient prefill for a contextual "add item" (e.g. from a QT header) —
@@ -111,6 +116,9 @@ export interface StoreState extends Store {
   setCalDateField: (field: CalDateField) => void;
   setStatusDim: (key: StatusDimKey) => void;
   setOwnerQuota: (owner: string, amount: number) => void;
+  addMember: (name: string) => void;
+  // Hydration-only setter — call from lib/data/sync.ts, not from UI code.
+  setTeamRoster: (names: string[]) => void;
   openItemModal: (id?: string | null) => void;
   openNewItem: (prefill?: Partial<Item>) => void;
   closeItemModal: () => void;
@@ -240,6 +248,7 @@ export const useStore = create<StoreState>()(
       statusDim: "exec",
       initialized: false,
       ownerQuotas: {},
+      teamRoster: [],
       modalItemId: null,
       isItemModalOpen: false,
       newItemPrefill: null,
@@ -597,6 +606,16 @@ export const useStore = create<StoreState>()(
           }
           return { ownerQuotas: { ...state.ownerQuotas, [trimmedOwner]: amount } };
         });
+      },
+      addMember(name) {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        // exact-match dedupe, consistent with the existing salesOwner auto-add
+        // in upsertCustomer/updateCustomer above (state.members.includes(...)).
+        set((state) => (state.members.includes(trimmed) ? {} : { members: [...state.members, trimmed] }));
+      },
+      setTeamRoster(names) {
+        set({ teamRoster: names });
       },
       openItemModal(id = null) {
         set({ modalItemId: id, isItemModalOpen: true });

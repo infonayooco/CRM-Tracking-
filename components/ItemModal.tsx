@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ChevronDown, ClipboardCheck, Copy, Plus, Save, Trash2, X } from "lucide-react";
-import type { FormEvent, MouseEvent, SyntheticEvent } from "react";
+import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent, SyntheticEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   cardClass,
@@ -29,6 +29,7 @@ import type {
 } from "@/lib/types";
 
 const NEW_CUSTOMER_VALUE = "__new__";
+const ADD_NEW_ASSIGNEE_VALUE = "__add_new_assignee__";
 
 // Rating input options: 0 clears/leaves the rating unset (same semantics as
 // the old star widget at 0 stars), 1-5 mirror the previous star values.
@@ -160,6 +161,8 @@ function ItemModalContent({
   const customers = useStore((state) => state.customers);
   const items = useStore((state) => state.items);
   const members = useStore((state) => state.members);
+  const teamRoster = useStore((state) => state.teamRoster);
+  const addMember = useStore((state) => state.addMember);
   const addItem = useStore((state) => state.addItem);
   const updateItem = useStore((state) => state.updateItem);
   const deleteItem = useStore((state) => state.deleteItem);
@@ -174,11 +177,32 @@ function ItemModalContent({
     () => [...new Set([...members, currentUser].filter(Boolean))].sort((a, b) => a.localeCompare(b, "th")),
     [members, currentUser],
   );
+  // Subtask assignee options are scoped separately from ownerOptions (used by
+  // the sales-owner datalist above) so registered accounts vs. manually-added
+  // names can be shown in distinct groups without touching that picker.
+  const registeredAssigneeOptions = useMemo(
+    () => [...new Set(teamRoster.filter(Boolean))].sort((a, b) => a.localeCompare(b, "th")),
+    [teamRoster],
+  );
+  const manualAssigneeOptions = useMemo(() => {
+    const registered = new Set(registeredAssigneeOptions);
+    return [...new Set(members.filter(Boolean))]
+      .filter((name) => !registered.has(name))
+      .sort((a, b) => a.localeCompare(b, "th"));
+  }, [members, registeredAssigneeOptions]);
+  const assigneeOptions = useMemo(
+    () => [...registeredAssigneeOptions, ...manualAssigneeOptions],
+    [registeredAssigneeOptions, manualAssigneeOptions],
+  );
 
   const [form, setForm] = useState<FormState>(() =>
     createFormState(editingItem, sortedCustomers, currentUser, newItemPrefill),
   );
   const [errors, setErrors] = useState<FormErrors>({});
+  // Which checklist entry (if any) is showing the inline "add new name" input
+  // in place of its assignee <select>, and the text typed into it.
+  const [addingAssigneeId, setAddingAssigneeId] = useState<string | null>(null);
+  const [newAssigneeName, setNewAssigneeName] = useState("");
 
   const isNewCustomer = form.customerId === NEW_CUSTOMER_VALUE;
   const selectedCustomerId = isNewCustomer ? "" : form.customerId;
@@ -299,6 +323,46 @@ function ItemModalContent({
       ...current,
       checklist: current.checklist.filter((entry) => entry.id !== id),
     }));
+    setAddingAssigneeId((current) => (current === id ? null : current));
+  };
+
+  const startAddAssignee = (entryId: string) => {
+    setAddingAssigneeId(entryId);
+    setNewAssigneeName("");
+  };
+
+  const cancelAddAssignee = () => {
+    setAddingAssigneeId(null);
+    setNewAssigneeName("");
+  };
+
+  // Confirms the inline "add new name" input: registers the name centrally
+  // (skipped if it already matches an existing option, so it isn't
+  // duplicated into `members`) and selects it as this subtask's assignee. A
+  // blank name is treated as a cancel — no assignee change.
+  const confirmAddAssignee = (entryId: string) => {
+    const trimmed = newAssigneeName.trim();
+    if (trimmed) {
+      if (!assigneeOptions.includes(trimmed)) addMember(trimmed);
+      updateChecklistEntry(entryId, { assignee: trimmed });
+    }
+    setAddingAssigneeId(null);
+    setNewAssigneeName("");
+  };
+
+  // Enter confirms, Escape cancels. The modal closes on Escape via a
+  // window-level keydown listener (see the effect below) — stopPropagation
+  // here keeps Escape scoped to cancelling the inline input instead of also
+  // closing the whole modal.
+  const handleNewAssigneeKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>, entryId: string) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      confirmAddAssignee(entryId);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      cancelAddAssignee();
+    }
   };
 
   const updateMetricEntry = (id: string, patch: Partial<MetricForm>) => {
@@ -1039,24 +1103,75 @@ function ItemModalContent({
                         <div className="grid gap-2 sm:grid-cols-3">
                           <label className="block">
                             <span className={labelClass}>ผู้รับผิดชอบ</span>
-                            <select
-                              value={entry.assignee}
-                              onChange={(event) =>
-                                updateChecklistEntry(entry.id, { assignee: event.target.value })
-                              }
-                              className={fieldClass}
-                              aria-label="ผู้รับผิดชอบงานย่อย"
-                            >
-                              <option value="">ยังไม่มอบหมาย</option>
-                              {entry.assignee && !ownerOptions.includes(entry.assignee) ? (
-                                <option value={entry.assignee}>{entry.assignee}</option>
-                              ) : null}
-                              {ownerOptions.map((owner) => (
-                                <option key={owner} value={owner}>
-                                  {owner}
-                                </option>
-                              ))}
-                            </select>
+                            {addingAssigneeId === entry.id ? (
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  autoFocus
+                                  value={newAssigneeName}
+                                  onChange={(event) => setNewAssigneeName(event.target.value)}
+                                  onKeyDown={(event) => handleNewAssigneeKeyDown(event, entry.id)}
+                                  className={fieldClass}
+                                  placeholder="ชื่อผู้รับผิดชอบใหม่"
+                                  aria-label="ชื่อผู้รับผิดชอบใหม่"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => confirmAddAssignee(entry.id)}
+                                  className="grid size-10 shrink-0 place-items-center rounded-lg border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-100"
+                                  aria-label="ยืนยันชื่อผู้รับผิดชอบใหม่"
+                                  title="ยืนยัน"
+                                >
+                                  <Check className="size-4" aria-hidden="true" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={cancelAddAssignee}
+                                  className="grid size-10 shrink-0 place-items-center rounded-lg text-muted transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-100"
+                                  aria-label="ยกเลิกเพิ่มชื่อผู้รับผิดชอบใหม่"
+                                  title="ยกเลิก"
+                                >
+                                  <X className="size-4" aria-hidden="true" />
+                                </button>
+                              </div>
+                            ) : (
+                              <select
+                                value={entry.assignee}
+                                onChange={(event) => {
+                                  const value = event.target.value;
+                                  if (value === ADD_NEW_ASSIGNEE_VALUE) {
+                                    startAddAssignee(entry.id);
+                                    return;
+                                  }
+                                  updateChecklistEntry(entry.id, { assignee: value });
+                                }}
+                                className={fieldClass}
+                                aria-label="ผู้รับผิดชอบงานย่อย"
+                              >
+                                <option value="">ยังไม่มอบหมาย</option>
+                                {entry.assignee && !assigneeOptions.includes(entry.assignee) ? (
+                                  <option value={entry.assignee}>{entry.assignee}</option>
+                                ) : null}
+                                {registeredAssigneeOptions.length ? (
+                                  <optgroup label="บัญชีในระบบ">
+                                    {registeredAssigneeOptions.map((owner) => (
+                                      <option key={owner} value={owner}>
+                                        {owner}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                ) : null}
+                                {manualAssigneeOptions.length ? (
+                                  <optgroup label="รายชื่อที่เพิ่มเอง">
+                                    {manualAssigneeOptions.map((owner) => (
+                                      <option key={owner} value={owner}>
+                                        {owner}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                ) : null}
+                                <option value={ADD_NEW_ASSIGNEE_VALUE}>＋ เพิ่มรายชื่อใหม่…</option>
+                              </select>
+                            )}
                           </label>
                           <label className="block">
                             <span className={labelClass}>วันเริ่ม</span>

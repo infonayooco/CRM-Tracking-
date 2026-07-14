@@ -22,6 +22,7 @@ import {
   deleteItems,
   deleteOwnerQuotas,
   fetchSnapshot,
+  fetchTeamRoster,
   setOwnerQuotas,
   upsertCustomers,
   upsertItems,
@@ -82,6 +83,25 @@ export async function hydrateFromSupabase(db: SupabaseDB = createClient()): Prom
     applyingRemote = false;
   }
   lastSynced = data;
+
+  // Team roster (registered accounts, for the assignee dropdown) is read-only
+  // reference data — it is intentionally NOT part of CrmSnapshot/lastSynced, so
+  // it is never diffed or written back to Supabase. A failure here (migration
+  // not yet applied, or this account has no role yet) must not break hydration
+  // of customers/items/members/quotas above, so it's caught and degrades to an
+  // empty roster. Not surfaced via emitSyncError/SyncAlert: that channel's copy
+  // is specifically about a failed *write*, which would mislead the user here.
+  try {
+    const teamRoster = await fetchTeamRoster(db);
+    applyingRemote = true;
+    try {
+      useStore.getState().setTeamRoster(teamRoster);
+    } finally {
+      applyingRemote = false;
+    }
+  } catch {
+    // degrade gracefully — teamRoster stays at its default []
+  }
 }
 
 export function startSupabaseSync(db: SupabaseDB = createClient()): () => void {

@@ -238,6 +238,12 @@ export interface Database {
         Args: Record<string, never>;
         Returns: boolean;
       };
+      // Minimal team roster for assignee dropdowns (id + display_name only,
+      // no email/role); excludes pending (role IS NULL) accounts.
+      list_team_roster: {
+        Args: Record<string, never>;
+        Returns: { id: string; display_name: string | null }[];
+      };
       user_role: {
         // NULL for a pending user (role IS NULL) or an unknown uid.
         Args: { uid: string };

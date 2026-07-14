@@ -69,6 +69,22 @@ export async function deleteMembers(db: SupabaseDB, names: string[]): Promise<vo
   if (error) throw error;
 }
 
+// Registered-account roster for the subtask assignee dropdown, via the
+// list_team_roster() RPC (profiles with an assigned role only). READ-ONLY —
+// deliberately not part of CrmSnapshot/fetchSnapshot: that type is diffed and
+// written back to Supabase by lib/data/sync.ts on every store change, and the
+// roster must never be pushed back to the profiles table.
+export async function fetchTeamRoster(db: SupabaseDB): Promise<string[]> {
+  const { data, error } = await db.rpc("list_team_roster");
+  if (error) throw error;
+  const names = new Set<string>();
+  for (const row of data ?? []) {
+    const name = (row.display_name ?? "").trim();
+    if (name) names.add(name);
+  }
+  return [...names].sort((a, b) => a.localeCompare(b, "th"));
+}
+
 export async function setOwnerQuotas(db: SupabaseDB, entries: [string, number][]): Promise<void> {
   if (entries.length === 0) return;
   const { error } = await db

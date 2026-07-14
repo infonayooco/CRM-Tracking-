@@ -3,6 +3,7 @@ import {
   type SupabaseDB,
   deleteItems,
   fetchSnapshot,
+  fetchTeamRoster,
   upsertCustomers,
 } from "@/lib/data/repository";
 import { normalizeCustomer } from "@/lib/normalize";
@@ -10,8 +11,12 @@ import { normalizeCustomer } from "@/lib/normalize";
 type Call = { op: string; table: string; [key: string]: unknown };
 
 // Minimal fake of the supabase-js query builder covering just the calls the
-// repository makes: from().select(), from().upsert(), from().delete().in().
-function fakeDb(tableData: Record<string, { data?: unknown; error?: unknown }> = {}) {
+// repository makes: from().select(), from().upsert(), from().delete().in(),
+// and rpc() (for fetchTeamRoster).
+function fakeDb(
+  tableData: Record<string, { data?: unknown; error?: unknown }> = {},
+  rpcData: Record<string, { data?: unknown; error?: unknown }> = {},
+) {
   const calls: Call[] = [];
   const db = {
     from(table: string) {
@@ -33,6 +38,10 @@ function fakeDb(tableData: Record<string, { data?: unknown; error?: unknown }> =
           };
         },
       };
+    },
+    rpc(name: string) {
+      calls.push({ op: "rpc", table: name });
+      return Promise.resolve(rpcData[name] ?? { data: [], error: null });
     },
   };
   return { db: db as unknown as SupabaseDB, calls };
@@ -92,5 +101,37 @@ describe("repository", () => {
     const { db, calls } = fakeDb();
     await deleteItems(db, ["i1", "i2"]);
     expect(calls[0]).toMatchObject({ op: "delete", table: "items", col: "id", ids: ["i1", "i2"] });
+  });
+
+  it("fetchTeamRoster maps display_name, trims, drops null/empty, dedupes, and sorts (th locale)", async () => {
+    const { db, calls } = fakeDb(
+      {},
+      {
+        list_team_roster: {
+          data: [
+            { id: "1", display_name: "  พี่บอส  " },
+            { id: "2", display_name: "พี่แนน" },
+            { id: "3", display_name: "พี่แนน" }, // duplicate — dropped
+            { id: "4", display_name: null }, // pending/blank account — dropped
+            { id: "5", display_name: "   " }, // blank after trim — dropped
+          ],
+          error: null,
+        },
+      },
+    );
+    const roster = await fetchTeamRoster(db);
+    expect(calls).toEqual([{ op: "rpc", table: "list_team_roster" }]);
+    expect(roster).toHaveLength(2);
+    expect(roster).toEqual(["พี่บอส", "พี่แนน"].sort((a, b) => a.localeCompare(b, "th")));
+  });
+
+  it("fetchTeamRoster returns [] when the RPC returns no rows", async () => {
+    const { db } = fakeDb({}, { list_team_roster: { data: [], error: null } });
+    expect(await fetchTeamRoster(db)).toEqual([]);
+  });
+
+  it("fetchTeamRoster throws on RPC error (caller decides how to degrade)", async () => {
+    const { db } = fakeDb({}, { list_team_roster: { data: null, error: { message: "boom" } } });
+    await expect(fetchTeamRoster(db)).rejects.toBeTruthy();
   });
 });
