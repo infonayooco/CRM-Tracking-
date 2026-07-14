@@ -16,6 +16,8 @@ import {
 import { useStore } from "@/lib/store";
 import type { Customer, Item } from "@/lib/types";
 import { emptyCardClass } from "@/components/ui";
+import { can, type AppRole } from "@/lib/auth/permissions";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { CustomerEditModal } from "./CustomerEditModal";
 import { CustomerList, type CustomerRow, type SortKey } from "./customers/CustomerList";
 import { CustomerDetailPane } from "./customers/CustomerDetailPane";
@@ -25,7 +27,7 @@ import { CustomerDetailPane } from "./customers/CustomerDetailPane";
 // how ItemModal already reuses one modal for create+edit.
 type ModalState = { mode: "create" } | { mode: "edit"; customerId: string };
 
-export function CustomersView() {
+export function CustomersView({ role }: { role: AppRole | null }) {
   const customers = useStore((state) => state.customers);
   const items = useStore((state) => state.items);
   const setFilter = useStore((state) => state.setFilter);
@@ -41,6 +43,11 @@ export function CustomersView() {
   const [provinceFilter, setProvinceFilter] = useState("");
 
   const itemsByCustomer = useMemo(() => new Map(groupItemsByCustomer(items)), [items]);
+
+  // RLS only allows customer deletes for admin/manager — standalone mode (no
+  // Supabase, no RLS) keeps delete available exactly as it works today, same
+  // rule shape as ReportView's owner-quota gate.
+  const canDeleteCustomer = !isSupabaseConfigured() || can(role, "customers.delete");
 
   // per-customer "ค้าง/โอกาส" tally — who needs chasing (unsent report / uncollected
   // result / expiring / expired-renewal).
@@ -182,7 +189,7 @@ export function CustomersView() {
               attention={attentionByCustomer.get(selectedCustomer.id) || 0}
               onBack={() => setSelectedCustomerId(null)}
               onEdit={() => setModalState({ mode: "edit", customerId: selectedCustomer.id })}
-              onDelete={() => handleDeleteCustomer(selectedCustomer)}
+              onDelete={canDeleteCustomer ? () => handleDeleteCustomer(selectedCustomer) : undefined}
               onOpenReport={() => openCustomerReport(selectedCustomer.id)}
               onOpenItems={() => openCustomerItems(selectedCustomer.id)}
             />
@@ -202,6 +209,7 @@ export function CustomersView() {
         <CustomerEditModal
           customerId={modalState.mode === "edit" ? modalState.customerId : null}
           onClose={() => setModalState(null)}
+          role={role}
         />
       ) : null}
     </>

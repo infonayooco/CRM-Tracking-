@@ -21,6 +21,8 @@ import { useFocusTrap } from "@/lib/useFocusTrap";
 import type { Customer, InteractionType } from "@/lib/types";
 import { PROVINCES_SORTED_TH } from "@/lib/provinces";
 import { cardClass, ghostBtnClass, inputClass, primaryBtnClass, sectionLabelClass } from "@/components/ui";
+import { can, type AppRole } from "@/lib/auth/permissions";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 const CUSTOM_OWNER_VALUE = "__custom_owner__";
 
@@ -83,9 +85,11 @@ type OwnerMode = "select" | "custom";
 export function CustomerEditModal({
   customerId,
   onClose,
+  role,
 }: {
   customerId: string | null;
   onClose: () => void;
+  role: AppRole | null;
 }) {
   const customers = useStore((state) => state.customers);
   const customer = useMemo(
@@ -105,6 +109,7 @@ export function CustomerEditModal({
       customer={customer}
       customers={customers}
       onClose={onClose}
+      role={role}
     />
   );
 }
@@ -113,10 +118,12 @@ function CustomerEditModalContent({
   customer,
   customers,
   onClose,
+  role,
 }: {
   customer: Customer;
   customers: Customer[];
   onClose: () => void;
+  role: AppRole | null;
 }) {
   const items = useStore((state) => state.items);
   const members = useStore((state) => state.members);
@@ -140,6 +147,10 @@ function CustomerEditModalContent({
     () => items.filter((item) => item.customerId === customer.id).length,
     [items, customer.id],
   );
+  // RLS only allows customer deletes for admin/manager — standalone mode (no
+  // Supabase, no RLS) keeps delete available exactly as it works today, same
+  // rule shape as ReportView's owner-quota gate.
+  const canDelete = !isSupabaseConfigured() || can(role, "customers.delete");
   const ownerOptions = useMemo(
     () =>
       [...new Set([...members, customer.salesOwner].map((member) => member.trim()).filter(Boolean))].sort(
@@ -456,10 +467,14 @@ function CustomerEditModalContent({
         </div>
 
         <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-border-soft px-5 py-4 sm:px-6">
-          <button type="button" onClick={handleDelete} className={destructiveButtonClass}>
-            <Trash2 className="size-4" aria-hidden="true" />
-            ลบลูกค้า
-          </button>
+          {canDelete ? (
+            <button type="button" onClick={handleDelete} className={destructiveButtonClass}>
+              <Trash2 className="size-4" aria-hidden="true" />
+              ลบลูกค้า
+            </button>
+          ) : (
+            <span />
+          )}
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className={ghostBtnClass}>
               ยกเลิก

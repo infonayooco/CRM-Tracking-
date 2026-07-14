@@ -45,6 +45,8 @@ import { RevenueChannelDonut } from "@/components/report/RevenueChannelDonut";
 import { THAI_MONTHS_FULL } from "@/lib/constants";
 import { serializeAnalyticsCsv } from "@/lib/exportAnalytics";
 import { downloadFile } from "@/lib/exportData";
+import { can, type AppRole } from "@/lib/auth/permissions";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
   activeFilterChips,
   attainmentSummary,
@@ -136,7 +138,7 @@ interface KpiConfig {
   chart?: ReactNode;
 }
 
-export function ReportView() {
+export function ReportView({ role }: { role: AppRole | null }) {
   const [activeReportTab, setActiveReportTab] = useState<ReportTab>("overview");
   const [selectedMonth, setSelectedMonth] = useState(ALL_MONTHS);
   const [compareBasis, setCompareBasis] = useState<CompareBasis>("mom");
@@ -515,7 +517,11 @@ export function ReportView() {
               <ChartCard title="รายได้ตามช่องทาง" description="รวมราคาแยกช่องทาง">
                 <RevenueByChannel items={scopedItems} customers={customers} />
               </ChartCard>
-              <OwnerPerformancePanel rows={ownerPerf} scopeIsSingleMonth={activeMonth !== ALL_MONTHS} />
+              <OwnerPerformancePanel
+                rows={ownerPerf}
+                scopeIsSingleMonth={activeMonth !== ALL_MONTHS}
+                canEditQuota={!isSupabaseConfigured() || can(role, "team.manage")}
+              />
               <ChartCard title="รายได้ตามเจ้าของงานขาย" description="รวมราคาแยกเจ้าของงานขาย">
                 <RevenueByOwner items={scopedItems} customers={customers} />
               </ChartCard>
@@ -1209,9 +1215,11 @@ function ItemTypePerformancePanel({ rows }: { rows: ItemTypePerf[] }) {
 function OwnerPerformancePanel({
   rows,
   scopeIsSingleMonth,
+  canEditQuota,
 }: {
   rows: OwnerPerf[];
   scopeIsSingleMonth: boolean;
+  canEditQuota: boolean;
 }) {
   const ownerQuotas = useStore((state) => state.ownerQuotas);
   const setOwnerQuota = useStore((state) => state.setOwnerQuota);
@@ -1255,20 +1263,26 @@ function OwnerPerformancePanel({
                   </td>
                   <td data-label="รายได้" className="tnum px-3 py-2.5 text-right text-ink">{money(row.revenue)}</td>
                   <td data-label="เป้าหมาย (quota)" className="px-3 py-2.5 text-right">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      // plain digits (not toLocaleString) so a thousands comma isn't
-                      // inserted mid-typing, which would jump the caret
-                      value={quota > 0 ? String(quota) : ""}
-                      onChange={(event) => {
-                        const digits = event.target.value.replace(/[^0-9]/g, "");
-                        setOwnerQuota(row.owner, digits ? Number(digits) : 0);
-                      }}
-                      placeholder="—"
-                      aria-label={`เป้าหมายรายได้ต่อเดือนของ ${row.owner}`}
-                      className="tnum w-24 rounded-md border border-border px-2 py-1 text-right text-sm text-ink outline-none transition-colors focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
-                    />
+                    {canEditQuota ? (
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        // plain digits (not toLocaleString) so a thousands comma isn't
+                        // inserted mid-typing, which would jump the caret
+                        value={quota > 0 ? String(quota) : ""}
+                        onChange={(event) => {
+                          const digits = event.target.value.replace(/[^0-9]/g, "");
+                          setOwnerQuota(row.owner, digits ? Number(digits) : 0);
+                        }}
+                        placeholder="—"
+                        aria-label={`เป้าหมายรายได้ต่อเดือนของ ${row.owner}`}
+                        className="tnum w-24 rounded-md border border-border px-2 py-1 text-right text-sm text-ink outline-none transition-colors focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+                      />
+                    ) : (
+                      <span className="tnum text-ink" aria-label={`เป้าหมายรายได้ต่อเดือนของ ${row.owner}`}>
+                        {quota > 0 ? quota.toLocaleString("th-TH") : "—"}
+                      </span>
+                    )}
                   </td>
                   <td data-label="%บรรลุเป้า" className="tnum px-3 py-2.5 text-right font-semibold">
                     {attainmentPct === null ? (

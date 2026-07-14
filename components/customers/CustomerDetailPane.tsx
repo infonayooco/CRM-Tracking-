@@ -53,7 +53,9 @@ interface CustomerDetailPaneProps {
   attention: number;
   onBack: () => void;
   onEdit: () => void;
-  onDelete: () => void;
+  /** Omitted (not just disabled) when the signed-in role lacks the delete
+   * capability — a disabled delete button is just confusing. */
+  onDelete?: () => void;
   onOpenReport: () => void;
   onOpenItems: () => void;
 }
@@ -176,20 +178,22 @@ export function CustomerDetailPane({
               <FileText className="size-4" aria-hidden="true" />
               ดูรีพอร์ต
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={onDelete}
-              aria-label={`ลบลูกค้า ${customer.name}`}
-            >
-              {/* Button's ghost variant already sets text/border color via
-                  ghostBtnClass, and this repo's Button has no class-merge
-                  utility — so the destructive tint is applied directly to
-                  these children (which always wins over an ancestor's
-                  inherited color) instead of gambling on className order. */}
-              <Trash2 className="size-4 text-error-dark" aria-hidden="true" />
-              <span className="text-error-dark">ลบ</span>
-            </Button>
+            {onDelete ? (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={onDelete}
+                aria-label={`ลบลูกค้า ${customer.name}`}
+              >
+                {/* Button's ghost variant already sets text/border color via
+                    ghostBtnClass, and this repo's Button has no class-merge
+                    utility — so the destructive tint is applied directly to
+                    these children (which always wins over an ancestor's
+                    inherited color) instead of gambling on className order. */}
+                <Trash2 className="size-4 text-error-dark" aria-hidden="true" />
+                <span className="text-error-dark">ลบ</span>
+              </Button>
+            ) : null}
           </div>
         </div>
 

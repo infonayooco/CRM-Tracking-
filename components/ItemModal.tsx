@@ -17,6 +17,8 @@ import { PROVINCES_SORTED_TH } from "@/lib/provinces";
 import { execToProgress } from "@/lib/normalize";
 import { useStore } from "@/lib/store";
 import { useFocusTrap } from "@/lib/useFocusTrap";
+import { can, type AppRole } from "@/lib/auth/permissions";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type {
   ChannelKey,
   Customer,
@@ -110,7 +112,7 @@ function FormSection({ title, children }: { title: string; children: React.React
   );
 }
 
-export function ItemModal() {
+export function ItemModal({ role }: { role: AppRole | null }) {
   const isOpen = useStore((state) => state.isItemModalOpen);
   const modalItemId = useStore((state) => state.modalItemId);
   const newItemPrefill = useStore((state) => state.newItemPrefill);
@@ -141,6 +143,7 @@ export function ItemModal() {
       sortedCustomers={sortedCustomers}
       currentUser={currentUser}
       newItemPrefill={newItemPrefill}
+      role={role}
     />
   );
 }
@@ -151,12 +154,14 @@ function ItemModalContent({
   sortedCustomers,
   currentUser,
   newItemPrefill,
+  role,
 }: {
   modalItemId: string | null;
   editingItem: Item | undefined;
   sortedCustomers: Customer[];
   currentUser: string;
   newItemPrefill: Partial<Item> | null;
+  role: AppRole | null;
 }) {
   const customers = useStore((state) => state.customers);
   const items = useStore((state) => state.items);
@@ -485,6 +490,11 @@ function ItemModalContent({
   const handleOverlayClick = (event: MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) closeItemModal();
   };
+
+  // RLS only allows item deletes for admin/manager — standalone mode (no
+  // Supabase, no RLS) keeps delete available exactly as it works today, same
+  // rule shape as ReportView's owner-quota gate.
+  const canDelete = !isSupabaseConfigured() || can(role, "items.delete");
 
   const handleDelete = () => {
     if (!editingItem || !modalItemId) return;
@@ -1259,10 +1269,12 @@ function ItemModalContent({
         <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border-soft px-5 py-4 sm:px-6">
           {editingItem ? (
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={handleDelete} className={destructiveButtonClass}>
-                <Trash2 className="size-4" aria-hidden="true" />
-                ลบ
-              </button>
+              {canDelete ? (
+                <button type="button" onClick={handleDelete} className={destructiveButtonClass}>
+                  <Trash2 className="size-4" aria-hidden="true" />
+                  ลบ
+                </button>
+              ) : null}
               <button type="button" onClick={handleDuplicate} className={secondaryButtonClass}>
                 <Copy className="size-4" aria-hidden="true" />
                 ทำซ้ำ

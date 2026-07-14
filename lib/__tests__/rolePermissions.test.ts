@@ -29,11 +29,13 @@ describe("role permissions", () => {
     expect(can("mkt", "items.delete")).toBe(false);
   });
 
-  it("cs updates but does not create customers/items", () => {
+  it("cs can create and update customers/items but not delete", () => {
+    expect(can("cs", "customers.create")).toBe(true);
     expect(can("cs", "customers.update")).toBe(true);
+    expect(can("cs", "items.create")).toBe(true);
     expect(can("cs", "items.update")).toBe(true);
-    expect(can("cs", "customers.create")).toBe(false);
-    expect(can("cs", "items.create")).toBe(false);
+    expect(can("cs", "customers.delete")).toBe(false);
+    expect(can("cs", "items.delete")).toBe(false);
   });
 
   it("mkt works on items only, not customers", () => {

@@ -20,6 +20,7 @@ import { AuthBar } from "@/components/auth/AuthBar";
 import { SyncAlert } from "@/components/SyncAlert";
 import { useStore, type AppViewKey } from "@/lib/store";
 import type { SessionProfile } from "@/lib/auth/session";
+import type { AppRole } from "@/lib/auth/permissions";
 
 export function AppRoot({
   supabaseMode = false,
@@ -42,12 +43,12 @@ export function AppRoot({
         <AuthBar displayName={profile.displayName} role={profile.role} />
       ) : null}
       {supabaseMode ? <SyncAlert /> : null}
-      <AppShell />
+      <AppShell role={profile?.role ?? null} />
     </HydrationGate>
   );
 }
 
-function AppShell() {
+function AppShell({ role }: { role: AppRole | null }) {
   const view = useStore((state) => state.view);
   const reportCustomerId = useStore((state) => state.reportCustomerId);
   const isPaletteOpen = useStore((state) => state.isPaletteOpen);
@@ -127,10 +128,10 @@ function AppShell() {
           <MobileTopBar onOpenNav={() => setMobileNavOpen(true)} />
           <main className="mx-auto w-full min-w-0 max-w-[1400px] flex-1 p-4 sm:p-6 lg:p-8">
             {showActiveFilterBar ? <ActiveFilterBar /> : null}
-            {renderPlaceholder(view)}
+            {renderPlaceholder(view, role)}
           </main>
         </div>
-        <ItemModal />
+        <ItemModal role={role} />
       </div>
       <CommandPalette />
       <UndoToast />
@@ -174,7 +175,7 @@ function MobileTopBar({ onOpenNav }: { onOpenNav: () => void }) {
   );
 }
 
-function renderPlaceholder(view: AppViewKey) {
+function renderPlaceholder(view: AppViewKey, role: AppRole | null) {
   switch (view) {
     case "home":
       return <HomeView />;
@@ -185,9 +186,9 @@ function renderPlaceholder(view: AppViewKey) {
     case "timeline":
       return <GanttView />;
     case "customers":
-      return <CustomersView />;
+      return <CustomersView role={role} />;
     case "report":
-      return <ReportView />;
+      return <ReportView role={role} />;
   }
 }
 

@@ -46,7 +46,7 @@ const CAPABILITIES: Record<AppRole, readonly Capability[]> = {
     "team.manage",
   ],
   sale: ["customers.create", "customers.update", "items.create", "items.update"],
-  cs: ["customers.update", "items.update"],
+  cs: ["customers.create", "customers.update", "items.create", "items.update"],
   mkt: ["items.create", "items.update"],
 };
 
